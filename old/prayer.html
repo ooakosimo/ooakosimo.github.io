@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chonkly Archive | 2020 Prayer Tokens</title>
+    <style>
+        :root {
+            --ivory: #fdfaf2;
+            --gold: #d4af37;
+            --gold-glow: rgba(212, 175, 55, 0.4);
+            --glass: rgba(255, 255, 255, 0.6);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--ivory);
+            font-family: 'Georgia', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* Matrix/Particle Canvas Background */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            filter: blur(1px);
+        }
+
+        /* Main Container for Responsiveness */
+        .scene {
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        /* The Card - Landscape orientation */
+        .card {
+            width: 100%;
+            aspect-ratio: 1.6 / 1;
+            background: var(--glass);
+            border-radius: 15px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            display: flex;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            animation: breathe 5s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 20px 50px rgba(212, 175, 55, 0.1); }
+            50% { box-shadow: 0 25px 70px rgba(212, 175, 55, 0.3); }
+        }
+
+        /* Card Content Sections */
+        .card-art {
+            flex: 1.2;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid var(--gold);
+        }
+
+        .card-art img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Added a slight shimmer effect to the art */
+            filter: contrast(1.1) brightness(1.05);
+        }
+
+        .card-info {
+            flex: 1;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: #444;
+            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(253,250,242,0.8) 100%);
+        }
+
+        .card-info h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .card-info p {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            font-style: italic;
+            margin-top: 1rem;
+        }
+
+        /* Footer Info */
+        .metadata {
+            color: var(--gold);
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-align: center;
+            opacity: 0.7;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 600px) {
+            .card {
+                flex-direction: column;
+                aspect-ratio: auto;
+                height: 500px;
+            }
+            .card-art { border-right: none; border-bottom: 1px solid var(--gold); }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="scene">
+        <div class="card" id="tokenCard">
+            <div class="card-art">
+                <img src="https://i.imgur.com/your-image-here.png" alt="Prayer Token">
+            </div>
+            <div class="card-info">
+                <h2>Tribute: Three O'Clock</h2>
+                <p>"Prayer is for the wicked... solace and sovereignty to use your free will to embrace the unknown."</p>
+                <div style="margin-top: auto; font-size: 0.6rem;">
+                    BITJAMIN 2020 • CHONKLY ARCHIVE
+                </div>
+            </div>
+        </div>
+        <div class="metadata">
+            MINTED ON CHONKLY • LEGACY SERIES 0xcbf4...17c1
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        const card = document.getElementById('tokenCard');
+
+        let width, height, particles = [];
+
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            particles = [];
+            for(let i = 0; i < 60; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    speed: 0.5 + Math.random() * 2,
+                    length: 10 + Math.random() * 30,
+                    opacity: Math.random()
+                });
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 1;
+
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x, p.y + p.length);
+                ctx.stroke();
+
+                // Matrix-style falling with varying speed ramps
+                p.y += p.speed;
+                if (p.y > height) p.y = -p.length;
+            });
+            requestAnimationFrame(draw);
+        }
+
+        // Tilt Interaction
+        document.addEventListener('mousemove', (e) => {
+            let xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+            let yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+
+        // Mobile Tilt (Gyroscope)
+        window.addEventListener('deviceorientation', (e) => {
+            let xAxis = e.gamma / 2; 
+            let yAxis = e.beta / 2;
+            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+
+        window.addEventListener('resize', init);
+        init();
+        draw();
+
+        // Audio Placeholder Logic
+        // In a real app, you'd trigger a .mp3 of the Maqam drone here
+        console.log("Maqam low-frequency audio ready for initialization on user click.");
+    </script>
+</body>
+</html>

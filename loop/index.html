@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Into The Loop :: ooakosimo</title>
+  <link rel="icon" href="/gumamela.gif" />
+  <style>
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      background-color: #73b4d9;
+      font-family: sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+    #canvas { display: block; touch-action: none; }
+    body.idle-ui { cursor: none; }
+
+    /* ---------- ENTRY CLOUD ---------- */
+    #enter-wrap {
+      position: absolute; inset: 0; z-index: 20;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2.5rem;
+      transition: opacity .8s ease;
+    }
+    #enter-wrap.gone { opacity: 0; pointer-events: none; }
+    .cloud-btn {
+      position: relative;
+      width: 220px; height: 64px;
+      background: #f0f9ff; border-radius: 32px; border: none;
+      color: #0b6b9e; font-size: 1.4rem; font-family: serif; font-weight: bold;
+      cursor: pointer; transition: transform .2s ease;
+    }
+    .cloud-btn:hover, .cloud-btn:active { transform: scale(1.06); }
+    .cloud-btn::before, .cloud-btn::after {
+      content: ''; position: absolute; background: #f0f9ff; border-radius: 50%;
+    }
+    .cloud-btn::before { width: 80px; height: 80px; top: -40px; left: 30px; }
+    .cloud-btn::after  { width: 100px; height: 100px; top: -55px; right: 20px; }
+    .cloud-btn span { position: relative; z-index: 1; }
+    #source-row { display: none; flex-wrap: wrap; justify-content: center; gap: 3.2rem 2.2rem; padding: 0 1rem; }
+    #source-row.show { display: flex; }
+    .cloud-btn.small { width: 170px; height: 56px; font-size: 1.1rem; }
+    .cloud-btn.small::before { width: 60px; height: 60px; top: -30px; left: 24px; }
+    .cloud-btn.small::after  { width: 76px; height: 76px; top: -42px; right: 16px; }
+    .cloud-btn .sub { display: block; font-family: sans-serif; font-size: .65rem; font-weight: normal; opacity: .7; }
+    #enter-hint { color:#fff; font-size:.8rem; text-shadow:1px 1px 2px rgba(0,0,0,.4); opacity:.85; }
+
+    /* ---------- TITLE ---------- */
+    #title-container {
+      position: absolute; bottom: 6.5rem; width: 100%; z-index: 5;
+      display: flex; flex-direction: column; align-items: center; gap: .25rem;
+      text-align: center; pointer-events: none;
+      transition: opacity 1s ease;
+    }
+    #presenter-line { font-size:.8rem; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,.4); opacity:.8; letter-spacing:1px; margin:0; }
+    #title-banner { color:#fff; text-shadow:1px 1px 3px rgba(0,0,0,.5); font-family:serif; font-size:2.5rem; letter-spacing:1px; }
+    #subtitle { color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,.4); font-size:1rem; opacity:.9; margin:0; }
+
+    /* ---------- SOURCE BADGE (always tells the truth) ---------- */
+    #source-badge {
+      position: absolute; top: .9rem; left: .9rem; z-index: 15;
+      display: flex; align-items: center; gap: .55rem;
+      background: rgba(255,255,255,.85); border-radius: 20px;
+      padding: .45rem .95rem;
+      font-weight: bold; font-size: .95rem; color: #0b6b9e;
+      letter-spacing: .5px; user-select: none;
+      transition: opacity .8s ease;
+    }
+    body.idle-ui #source-badge { opacity: .45; }
+    #badge-dot { width: 12px; height: 12px; border-radius: 50%; background: #9bb7c9; flex: none; }
+    #source-badge.mode-music #badge-dot { background: #e67e22; }
+    #source-badge.mode-mic #badge-dot { background: #c0392b; animation: micpulse 1s ease-in-out infinite; }
+    @keyframes micpulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:.55} }
+    #badge-sub { font-weight: normal; font-size: .72rem; opacity: .75; }
+
+    /* ---------- PANEL TOGGLE + CONTROL PANEL ---------- */
+    #panel-toggle {
+      position: absolute; bottom: 1rem; right: 1rem; z-index: 30;
+      width: 58px; height: 58px; border-radius: 50%;
+      background: #f0f9ff; border: 3px solid #0b6b9e; color: #0b6b9e;
+      font-size: 1.5rem; font-weight: bold; cursor: pointer;
+      transition: opacity .8s ease, transform .2s ease;
+    }
+    #panel-toggle:active { transform: scale(1.08); }
+    body.idle-ui #panel-toggle { opacity: .35; }
+    #panel {
+      position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 110%);
+      z-index: 29; width: min(560px, calc(100% - 1.5rem));
+      background: rgba(240,249,255,.96); border-radius: 22px 22px 0 0;
+      padding: 1rem 1rem 1.2rem; box-sizing: border-box;
+      transition: transform .3s ease;
+      box-shadow: 0 -4px 24px rgba(11,107,158,.25);
+    }
+    #panel.open { transform: translate(-50%, 0); }
+    .panel-label { font-size:.7rem; font-weight:bold; letter-spacing:2px; color:#0b6b9e; opacity:.7; margin:.6rem 0 .35rem; }
+    .btn-row { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .pbtn {
+      flex: 1 1 auto; min-height: 56px; min-width: 96px;
+      border: 3px solid #0b6b9e; border-radius: 16px;
+      background: #fff; color: #0b6b9e;
+      font-size: 1.05rem; font-weight: bold; cursor: pointer;
+      transition: transform .12s ease;
+    }
+    .pbtn:active { transform: scale(.96); }
+    .pbtn.active { background: #0b6b9e; color: #fff; }
+    .pbtn.accent { border-color: #c75000; color: #c75000; }
+    .pbtn.accent.big { min-height: 68px; font-size: 1.2rem; background: #ffcc80; border-color: #c75000; color: #7e5109; }
+    #music-row { display: flex; align-items: center; gap: .6rem; }
+    #music-row .pbtn { flex: 0 0 auto; min-width: 64px; }
+    #timeline-scrubber {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      background: transparent; cursor: pointer; min-height: 44px;
+    }
+    #timeline-scrubber::-webkit-slider-runnable-track { background: rgba(11,107,158,.3); height: 8px; border-radius: 8px; }
+    #timeline-scrubber::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; margin-top: -8px;
+      background: #fff; height: 24px; width: 24px; border-radius: 50%;
+      border: 3px solid #0b6b9e;
+    }
+    #timeline-scrubber::-moz-range-track { background: rgba(11,107,158,.3); height: 8px; border-radius: 8px; }
+    #timeline-scrubber::-moz-range-thumb { background:#fff; height:24px; width:24px; border-radius:50%; border:3px solid #0b6b9e; }
+    #panel-foot { display:flex; justify-content:space-between; align-items:center; margin-top:.8rem; font-size:.7rem; color:#0b6b9e; opacity:.75; }
+    #remote-status { display:flex; align-items:center; gap:.35rem; }
+    #remote-dot { width:9px; height:9px; border-radius:50%; background:#b0b0b0; }
+    #remote-dot.on { background:#27ae60; }
+
+    /* ---------- NAME FLASH (sticker style, 10s decay) ---------- */
+    #name-flash {
+      position: absolute; inset: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none; opacity: 0;
+      font-family: serif; font-weight: bold;
+      font-size: clamp(2.4rem, 11vw, 9rem);
+      letter-spacing: .04em;
+      color: #fff;
+      -webkit-text-stroke: 3px #000;
+      paint-order: stroke fill;
+      text-shadow: 0 0 24px rgba(255,255,255,.6);
+    }
+    #name-flash.go { animation: flashdecay 10s ease-out forwards; }
+    @keyframes flashdecay {
+      0% { opacity: 0; transform: scale(.92); }
+      6% { opacity: 1; transform: scale(1); }
+      35% { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.03); }
+    }
+    #toast {
+      position:absolute; top:4rem; left:50%; transform:translateX(-50%);
+      z-index:35; background:rgba(0,0,0,.65); color:#fff;
+      padding:.5rem 1rem; border-radius:14px; font-size:.85rem; font-weight:bold;
+      opacity:0; transition:opacity .4s ease; pointer-events:none; max-width:85%;
+      text-align:center;
+    }
+    #toast.show { opacity:1; }
+
+    /* ---------- VJ HUD (family resemblance: the deck readout) ---------- */
+    #vj-hud {
+      position: absolute; top: .9rem; right: .9rem; z-index: 15;
+      font-family: 'Courier New', monospace; font-size: .72rem; font-weight: bold;
+      color: #ffd977; background: rgba(0,0,0,.38);
+      padding: .35rem .6rem; border-radius: 8px;
+      letter-spacing: .5px; user-select: none; pointer-events: none;
+      transition: opacity .8s ease; white-space: nowrap;
+    }
+    body.idle-ui #vj-hud { opacity: .35; }
+    @media (pointer: coarse) { #vj-hud, #vj-section { display: none; } }
+    #sens-row { display: flex; align-items: center; gap: .8rem; }
+    #sens-row input {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      background: transparent; cursor: pointer; min-height: 40px;
+    }
+    #sens-row input::-webkit-slider-runnable-track { background: rgba(199,80,0,.35); height: 8px; border-radius: 8px; }
+    #sens-row input::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; margin-top: -8px;
+      background: #ffcc80; height: 24px; width: 24px; border-radius: 50%;
+      border: 3px solid #c75000;
+    }
+    #sens-row input::-moz-range-track { background: rgba(199,80,0,.35); height: 8px; border-radius: 8px; }
+    #sens-row input::-moz-range-thumb { background:#ffcc80; height:24px; width:24px; border-radius:50%; border:3px solid #c75000; }
+    #sens-readout { font-family: 'Courier New', monospace; font-weight: bold; color: #c75000; min-width: 2.4em; text-align: right; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="source-badge" class="mode-auto">
+    <div id="badge-dot"></div>
+    <div>
+      <span id="badge-main">AUTO</span>
+      <span id="badge-sub">· self-playing</span>
+    </div>
+  </div>
+
+  <div id="title-container">
+    <p id="presenter-line">OoakosiMo 69th Chonkly Mint Presents:</p>
+    <div id="title-banner">Into The Loop</div>
+    <p id="subtitle">Reactive Audiovisualizer</p>
+  </div>
+
+  <div id="enter-wrap">
+    <button id="enter-button" class="cloud-btn"><span>Enter the Loop</span></button>
+    <div id="source-row">
+      <button class="cloud-btn small" data-src="auto"><span>Just Watch<span class="sub">self-playing</span></span></button>
+      <button class="cloud-btn small" data-src="music"><span>♪ Music<span class="sub">demo track</span></span></button>
+      <button class="cloud-btn small" data-src="mic"><span>● Mic<span class="sub">live input</span></span></button>
+    </div>
+    <p id="enter-hint">it's already flying — pick how it listens</p>
+  </div>
+
+  <button id="panel-toggle" aria-label="controls">☰</button>
+
+  <div id="panel">
+    <div class="panel-label">SOURCE</div>
+    <div class="btn-row" id="src-btns">
+      <button class="pbtn active" data-src="auto">AUTO</button>
+      <button class="pbtn" data-src="music">♪ MUSIC</button>
+      <button class="pbtn" data-src="mic">● MIC</button>
+    </div>
+    <div class="panel-label">MUSIC</div>
+    <div id="music-row">
+      <button class="pbtn" id="play-pause-button">▶</button>
+      <input type="range" id="timeline-scrubber" value="0" step="1" min="0" max="100">
+      <button class="pbtn" id="mute-button">🔈</button>
+    </div>
+    <div class="panel-label">PLAY</div>
+    <div class="btn-row">
+      <button class="pbtn accent" id="burst-button">✨ BURST</button>
+      <button class="pbtn accent" id="critter-button">🐸 CRITTER</button>
+    </div>
+    <div class="btn-row" style="margin-top:.5rem">
+      <button class="pbtn accent big" id="flash-button">⚡ OOAKOSIMO ⚡</button>
+    </div>
+    <div class="panel-label">VIEW</div>
+    <div class="btn-row">
+      <button class="pbtn" id="fullscreen-button">⛶ FULLSCREEN</button>
+      <button class="pbtn" id="weather-button">☀ SUNNY</button>
+      <button class="pbtn" id="hideui-button">🫥 HIDE 15s</button>
+    </div>
+    <div id="vj-section">
+      <div class="panel-label">VJ · SENSITIVITY</div>
+      <div id="sens-row">
+        <input type="range" id="sens-slider" min="0.2" max="3" step="0.1" value="1">
+        <span id="sens-readout">1.0</span>
+      </div>
+    </div>
+    <div id="panel-foot">
+      <span id="room-label">room: loop</span>
+      <span id="remote-status"><span id="remote-dot"></span><span id="remote-text">remote off</span></span>
+    </div>
+  </div>
+
+  <div id="name-flash">OOAKOSIMO</div>
+  <div id="vj-hud"></div>
+  <div id="toast"></div>
+
+  <script>
+  // ============================================================
+  // INTO THE LOOP — v2 · Weather Edition (2026)
+  // Enhanced remint/archive of the 69th Chonkly mint (2025)
+  // sources: AUTO (self-playing + autopilot show) / MUSIC / MIC
+  // new in v2: envelopes+beats, panic system, googly eyes,
+  // fountain bursts, breathing center, sunny/rainy weather,
+  // VJ sensitivity HUD (desktop), Sky Remote (MQTT, optional)
+  // no keyboard required. touch + mouse only. offline-safe.
+  // ============================================================
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  const COARSE = matchMedia('(pointer: coarse)').matches;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0;
+
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- population (scaled down on touch/small screens) ----------
+  const SMALL = COARSE || W < 820;
+  const N = {
+    clouds: SMALL ? 7 : 10, birds: SMALL ? 4 : 5,
+    bubbles: SMALL ? 14 : 25, orbiters: SMALL ? 6 : 8,
+    critters: SMALL ? 8 : 12, loops: SMALL ? 48 : 64,
+    critterCap: 20
+  };
+  const palette = ['#c75000', '#e67e22', '#ffcc80', '#7e5109'];
+  const names = ['cactus','fish','cloud','frog','banana','eyeball','camel','spamcan','trashcan'];
+
+  let birds = [], clouds = [], bubbles = [], orbiters = [], critters = [];
+  let ripples = [], sparks = [];
+
+  for (let i = 0; i < N.clouds; i++) clouds.push({x:Math.random()*W,y:Math.random()*(H*0.4),size:50+Math.random()*50,speed:0.1+Math.random()*0.2,sway:0,swayPhase:Math.random()*Math.PI*2});
+  for (let i = 0; i < N.birds; i++) birds.push({x:Math.random()*W,y:Math.random()*(H*0.5),size:10+Math.random()*5,speed:0.5+Math.random()*1,wingPhase:Math.random()*Math.PI*2,wingSpeed:0});
+  for (let i = 0; i < N.bubbles; i++) bubbles.push({x:Math.random()*W,y:Math.random()*H,radius:Math.random()*20+10,dx:(Math.random()-0.5)*0.5,dy:(Math.random()-0.5)*0.5,color:palette[Math.floor(Math.random()*palette.length)],phase:Math.random()*Math.PI*2});
+  for (let i = 0; i < N.orbiters; i++) orbiters.push({angle:Math.random()*Math.PI*2,radius:100+Math.random()*50,speed:0.01+Math.random()*0.02,size:5+Math.random()*10,color:palette[Math.floor(Math.random()*palette.length)]});
+  function makeCritter(x, y) {
+    return {x:(x!==undefined?x:Math.random()*W), y:(y!==undefined?y:Math.random()*H),
+      dx:(Math.random()-0.5)*2, dy:(Math.random()-0.5)*2,
+      name:names[Math.floor(Math.random()*names.length)],
+      size:26+Math.random()*26, throb:Math.random()*Math.PI*2,
+      color:palette[Math.floor(Math.random()*palette.length)]};
+  }
+  for (let i = 0; i < N.critters; i++) critters.push(makeCritter());
+
+  function drawCritter(ctx,critter){ctx.fillStyle=critter.color;ctx.strokeStyle='#7e5109';ctx.lineWidth=2;ctx.save();ctx.translate(critter.x,critter.y);switch(critter.name){case'cactus':ctx.fillRect(-critter.size*0.1,-critter.size*0.4,critter.size*0.2,critter.size*0.8);ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.2,critter.size*0.15);ctx.fillRect(critter.size*0.1,0,critter.size*0.2,critter.size*0.15);break;case'fish':ctx.beginPath();ctx.ellipse(0,0,critter.size*0.4,critter.size*0.25,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(critter.size*0.3,0);ctx.lineTo(critter.size*0.6,-critter.size*0.2);ctx.lineTo(critter.size*0.6,critter.size*0.2);ctx.closePath();ctx.fill();break;case'cloud':ctx.beginPath();ctx.arc(0,0,critter.size*0.25,0,Math.PI*2);ctx.arc(critter.size*0.2,critter.size*0.1,critter.size*0.2,0,Math.PI*2);ctx.arc(-critter.size*0.2,critter.size*0.1,critter.size*0.2,0,Math.PI*2);ctx.fill();break;case'frog':ctx.beginPath();ctx.arc(0,0,critter.size*0.3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-critter.size*0.15,-critter.size*0.2,critter.size*0.1,0,Math.PI*2);ctx.arc(critter.size*0.15,-critter.size*0.2,critter.size*0.1,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(-critter.size*0.15,-critter.size*0.2,critter.size*0.05,0,Math.PI*2);ctx.arc(critter.size*0.15,-critter.size*0.2,critter.size*0.05,0,Math.PI*2);ctx.fill();break;case'banana':ctx.beginPath();ctx.moveTo(-critter.size*0.4,critter.size*0.2);ctx.quadraticCurveTo(0,-critter.size*0.5,critter.size*0.4,critter.size*0.2);ctx.quadraticCurveTo(0,-critter.size*0.2,-critter.size*0.4,critter.size*0.2);ctx.fill();break;case'eyeball':ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,critter.size*0.4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=critter.color;ctx.beginPath();ctx.arc(0,0,critter.size*0.25,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(0,0,critter.size*0.1,0,Math.PI*2);ctx.fill();break;case'camel':ctx.fillRect(-critter.size*0.4,0,critter.size*0.8,critter.size*0.2);ctx.beginPath();ctx.arc(-critter.size*0.2,0,critter.size*0.15,Math.PI,0);ctx.arc(critter.size*0.1,0,critter.size*0.15,Math.PI,0);ctx.fill();ctx.beginPath();ctx.arc(-critter.size*0.4,-critter.size*0.1,critter.size*0.1,0,Math.PI*2);ctx.fill();break;case'spamcan':ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.6,critter.size*0.4);ctx.fillStyle='#bdc3c7';ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.6,critter.size*0.05);break;case'trashcan':ctx.beginPath();ctx.moveTo(-critter.size*0.2,critter.size*0.3);ctx.lineTo(-critter.size*0.25,-critter.size*0.2);ctx.lineTo(critter.size*0.25,-critter.size*0.2);ctx.lineTo(critter.size*0.2,critter.size*0.3);ctx.closePath();ctx.fill();ctx.fillRect(-critter.size*0.3,-critter.size*0.3,critter.size*0.6,critter.size*0.1);break;}ctx.restore();}
+
+  // ---------- GOOGLY EYES (imported from the Sky Remote — every critter watches) ----------
+  function drawEyes(c, t) {
+    if (!c.eye) c.eye = { px: 0, py: 0, tx: 0, ty: 0, next: 0, blink: 0, nextBlink: t + 2 + Math.random() * 4 };
+    const e = c.eye;
+    if (t > e.next) {
+      const a = Math.random() * Math.PI * 2, r = Math.random();
+      e.tx = Math.cos(a) * r; e.ty = Math.sin(a) * r;
+      e.next = t + 0.8 + Math.random() * 2.4;
+    }
+    const chase = 0.08 + Math.min(1, panicLevel) * 0.25;   // panicked eyes dart faster
+    e.px += (e.tx - e.px) * chase; e.py += (e.ty - e.py) * chase;
+    if (t > e.nextBlink) { e.blink = 1; e.nextBlink = t + 2.5 + Math.random() * 5; }
+    e.blink = Math.max(0, e.blink - 0.12);
+    const wide = 1 + Math.min(1, panicLevel) * 0.7;        // eyes go WIDE when rattled
+    const lid = Math.max(0.12, 1 - e.blink * 0.9);
+    const s = c.size;
+    if (c.name === 'eyeball') {
+      // the whole body IS the googly eye — repaint iris, wander the pupil
+      ctx.fillStyle = c.color;
+      ctx.beginPath(); ctx.arc(c.x, c.y, s * 0.25, 0, Math.PI * 2); ctx.fill();
+      const pr = s * 0.1 * (1.15 - Math.min(1, panicLevel) * 0.5);
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(c.x + e.px * s * 0.13, c.y + e.py * s * 0.13, pr, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    const spots = c.name === 'frog'
+      ? [[-s * 0.15, -s * 0.2], [s * 0.15, -s * 0.2]]
+      : [[-s * 0.16, -s * 0.32], [s * 0.16, -s * 0.32]];
+    const er = (c.name === 'frog' ? s * 0.12 : s * 0.13) * wide;
+    for (const [ex, ey] of spots) {
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#7e5109'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(c.x + ex, c.y + ey, er, er * lid, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const pr = er * 0.45 * (1.1 - Math.min(1, panicLevel) * 0.4); // scared pupils shrink
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(c.x + ex + e.px * er * 0.45, c.y + ey + e.py * er * lid * 0.4, Math.max(1, pr * lid), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ---------- audio machinery ----------
+  const BINS = 64;
+  let dataArray = new Uint8Array(BINS);
+  let mode = 'auto'; // 'auto' | 'music' | 'mic'
+  let audioContext = null;
+  let musicAudio = null, musicAnalyser = null, musicReady = false;
+  let micAnalyser = null, micStream = null;
+  let isMuted = false;
+  let quietFrames = 0, idleFloor = false;
+
+  const MUSIC_SOURCES = ['IntoTheLoop.mp3', 'https://cryptowave.neocities.org/IntoTheLoop.mp3'];
+
+  function ensureContext() {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+  }
+
+  function buildMusic(srcIndex) {
+    return new Promise((resolve, reject) => {
+      const a = new Audio();
+      a.loop = true;
+      if (srcIndex > 0) a.crossOrigin = 'anonymous'; // remote fallback needs CORS
+      a.src = MUSIC_SOURCES[srcIndex];
+      a.addEventListener('loadedmetadata', () => {
+        timelineScrubber.max = a.duration;
+        const node = audioContext.createMediaElementSource(a);
+        musicAnalyser = audioContext.createAnalyser();
+        musicAnalyser.fftSize = 128;
+        node.connect(musicAnalyser);
+        musicAnalyser.connect(audioContext.destination);
+        resolve(a);
+      });
+      a.addEventListener('error', () => reject(srcIndex));
+      a.load();
+    });
+  }
+
+  async function startMusic() {
+    ensureContext();
+    if (!musicReady) {
+      try { musicAudio = await buildMusic(0); }
+      catch (e) {
+        try { musicAudio = await buildMusic(1); }
+        catch (e2) { toast('music file not found — staying on AUTO'); setMode('auto'); return false; }
+      }
+      musicReady = true;
+      musicAudio.muted = isMuted;
+    }
+    try { await musicAudio.play(); playPauseButton.textContent = '⏸'; }
+    catch (err) { toast('tap ▶ to start the music'); }
+    return true;
+  }
+
+  async function startMic() {
+    ensureContext();
+    if (micAnalyser) return true;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const node = audioContext.createMediaStreamSource(micStream);
+      micAnalyser = audioContext.createAnalyser();
+      micAnalyser.fftSize = 128;
+      node.connect(micAnalyser); // NEVER to destination — no feedback
+      return true;
+    } catch (err) {
+      toast('mic unavailable here — switched to AUTO');
+      return false;
+    }
+  }
+
+  async function setMode(next) {
+    if (next === 'music') {
+      const ok = await startMusic();
+      if (!ok) return;
+      mode = 'music';
+    } else if (next === 'mic') {
+      const ok = await startMic();
+      if (!ok) { mode = 'auto'; updateBadge(); syncSrcButtons(); return; }
+      if (musicAudio && !musicAudio.paused) { musicAudio.pause(); playPauseButton.textContent = '▶'; }
+      mode = 'mic';
+    } else {
+      if (musicAudio && !musicAudio.paused) { musicAudio.pause(); playPauseButton.textContent = '▶'; }
+      mode = 'auto';
+    }
+    quietFrames = 0; idleFloor = false;
+    updateBadge(); syncSrcButtons();
+  }
+
+  // ---------- AUTO source: the piece breathes on its own ----------
+  function autoData(t, out, gain) {
+    for (let i = 0; i < BINS; i++) {
+      const kick = Math.pow(Math.max(0, Math.sin(t * 2.4)), 12) * (i < 8 ? 170 : 25);
+      const wave = 70 + 60 * Math.sin(t * 0.9 + i * 0.35) + 35 * Math.sin(t * 1.7 - i * 0.12);
+      const shimmer = i > 40 ? 50 * Math.abs(Math.sin(t * 3.1 + i)) : 0;
+      const v = (wave * (1 - i / 96) + kick + shimmer * 0.6) * gain;
+      out[i] = Math.max(0, Math.min(255, v));
+    }
+  }
+  const autoBuf = new Uint8Array(BINS);
+
+  // ---------- SKY PASS: envelopes + beats (fast attack, slow decay) ----------
+  let envLow = 0, envMid = 0, envHigh = 0;
+  let avgLow = 0, beatCooldown = 0, beatPulse = 0;
+  // ---------- PANIC: presses rattle the whole population; it slowly settles ----------
+  let panicLevel = 0;
+  function addPanic(amount) { if (!REDUCED) panicLevel = Math.min(1.4, panicLevel + amount); }
+  orbiters.forEach(o => o.baseRadius = o.radius);
+
+  // ---------- WEATHER: sunny / rainy (dark) — doubles as projection-friendly mode ----------
+  const VERSION = 'v2 · Weather Edition · 2026';
+  let weather = (new URLSearchParams(location.search).get('weather') === 'rain') ? 'rain' : 'sun';
+  const SKYS = {
+    sun:  { top: '#73b4d9', bot: '#a3d1e6', cloud: 'rgba(255,255,255,0.7)', bird: '#333' },
+    rain: { top: '#16222f', bot: '#2b3f52', cloud: 'rgba(150,168,186,0.5)', bird: '#cfd8e0' }
+  };
+  let rain = [];
+  function setWeather(w) {
+    weather = w === 'rain' ? 'rain' : 'sun';
+    document.body.style.backgroundColor = SKYS[weather].top;
+    const wb = document.getElementById('weather-button');
+    if (wb) wb.textContent = weather === 'rain' ? '🌧 RAINY' : '☀ SUNNY';
+    if (weather === 'rain' && rain.length === 0) {
+      const n = SMALL ? 50 : 90;
+      for (let i = 0; i < n; i++) rain.push({ x: Math.random() * W, y: Math.random() * H, len: 8 + Math.random() * 14, spd: 4 + Math.random() * 5 });
+    }
+  }
+
+  // ---------- VJ: sensitivity + HUD (family resemblance to the other decks) ----------
+  let sens = 1.0, fps = 0, fpsCount = 0, fpsLast = performance.now(), hudLast = 0;
+
+  // ---------- AUTOPILOT: in AUTO with no humans around, the sky performs itself ----------
+  let lastHuman = performance.now();
+  let nextAutoEvent = 22 + Math.random() * 15;
+  let lastAutoFlash = 0;
+
+  // ---------- UI refs ----------
+  const badge = document.getElementById('source-badge');
+  const badgeMain = document.getElementById('badge-main');
+  const badgeSub = document.getElementById('badge-sub');
+  const panel = document.getElementById('panel');
+  const panelToggle = document.getElementById('panel-toggle');
+  const playPauseButton = document.getElementById('play-pause-button');
+  const timelineScrubber = document.getElementById('timeline-scrubber');
+  const muteButton = document.getElementById('mute-button');
+  const nameFlash = document.getElementById('name-flash');
+  const toastEl = document.getElementById('toast');
+  const enterWrap = document.getElementById('enter-wrap');
+
+  function updateBadge() {
+    badge.className = 'mode-' + mode;
+    if (mode === 'auto')  { badgeMain.textContent = 'AUTO';  badgeSub.textContent = '· self-playing'; }
+    if (mode === 'music') { badgeMain.textContent = 'MUSIC'; badgeSub.textContent = '· Into The Loop (demo track)'; }
+    if (mode === 'mic')   { badgeMain.textContent = 'MIC';   badgeSub.textContent = '· live input'; }
+    if (idleFloor && mode !== 'auto') badgeSub.textContent += ' · idle floor';
+  }
+  function syncSrcButtons() {
+    document.querySelectorAll('#src-btns .pbtn').forEach(b => b.classList.toggle('active', b.dataset.src === mode));
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+
+  // ---------- entry flow ----------
+  document.getElementById('enter-button').addEventListener('click', () => {
+    document.getElementById('enter-button').style.display = 'none';
+    document.getElementById('source-row').classList.add('show');
+  });
+  document.querySelectorAll('#source-row .cloud-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      enterWrap.classList.add('gone');
+      await setMode(b.dataset.src);
+    });
+  });
+  // gallery-proof: if nobody touches it, splash melts away and AUTO carries on
+  setTimeout(() => { if (!enterWrap.classList.contains('gone')) enterWrap.classList.add('gone'); }, 15000);
+
+  // ---------- panel wiring ----------
+  panelToggle.addEventListener('click', () => panel.classList.toggle('open'));
+  document.querySelectorAll('#src-btns .pbtn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.src)));
+  playPauseButton.addEventListener('click', async () => {
+    if (mode !== 'music') { await setMode('music'); return; }
+    if (!musicAudio) return;
+    if (musicAudio.paused) { musicAudio.play(); playPauseButton.textContent = '⏸'; }
+    else { musicAudio.pause(); playPauseButton.textContent = '▶'; }
+  });
+  timelineScrubber.addEventListener('input', () => { if (musicAudio) musicAudio.currentTime = timelineScrubber.value; });
+  muteButton.addEventListener('click', () => {
+    isMuted = !isMuted;
+    if (musicAudio) musicAudio.muted = isMuted;
+    muteButton.textContent = isMuted ? '🔇' : '🔈';
+  });
+  document.getElementById('flash-button').addEventListener('click', flashName);
+  document.getElementById('burst-button').addEventListener('click', () => burst(W / 2, H * 0.85, 2.5));
+  document.getElementById('critter-button').addEventListener('click', () => addCritter(Math.random() * W, Math.random() * H));
+  document.getElementById('fullscreen-button').addEventListener('click', () => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
+    else (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+  });
+  document.getElementById('hideui-button').addEventListener('click', () => {
+    panel.classList.remove('open');
+    document.body.classList.add('idle-ui');
+    setTimeout(() => document.body.classList.remove('idle-ui'), 15000);
+  });
+  const vjHud = document.getElementById('vj-hud');
+  document.getElementById('weather-button').addEventListener('click', () => setWeather(weather === 'rain' ? 'sun' : 'rain'));
+  const sensSlider = document.getElementById('sens-slider');
+  if (sensSlider) sensSlider.addEventListener('input', () => {
+    sens = parseFloat(sensSlider.value);
+    document.getElementById('sens-readout').textContent = sens.toFixed(1);
+  });
+  setWeather(weather); // boot: honors ?weather=rain
+
+  // ---------- name flash (house grammar: decay, not blink) ----------
+  function flashName() {
+    nameFlash.classList.remove('go');
+    void nameFlash.offsetWidth; // restart animation
+    nameFlash.classList.add('go');
+    burst(W / 2, H * 0.85, 3);
+  }
+
+  // ---------- touch / mouse play layer ----------
+  function burst(x, y, power) {
+    addPanic(0.25 * power);
+    const diag = Math.hypot(W, H);
+    ripples.push({ x, y, r: 8, max: power >= 2 ? diag : 260, alpha: 0.9 });
+    const n = 26 + power * 20;
+    const launch = Math.sqrt(2 * 0.12 * H) * (0.55 + 0.22 * power); // reaches the top at power 2+
+    for (let i = 0; i < n; i++) {
+      sparks.push({
+        x, y,
+        dx: (Math.random() - 0.5) * (3 + power * 2.2),
+        dy: -launch * (0.8 + Math.random() * 0.35),
+        life: 1,
+        color: Math.random() < 0.25 ? '#ffffff' : palette[Math.floor(Math.random() * palette.length)],
+        wig: 1.5 + Math.random() * 3.5,        // bendy
+        phase: Math.random() * Math.PI * 2,
+        w: 2.5 + Math.random() * 3,
+        trail: []
+      });
+    }
+    if (sparks.length > 170) sparks.splice(0, sparks.length - 170);
+  }
+  function addCritter(x, y) {
+    addPanic(0.35);
+    critters.push(makeCritter(x, y));
+    if (critters.length > N.critterCap) critters.shift();
+  }
+  let tapCount = 0, pointerActive = false, px = 0, py = 0;
+  canvas.addEventListener('pointerdown', e => {
+    pointerActive = true; px = e.clientX; py = e.clientY;
+    burst(px, py, 1);
+    tapCount++;
+    if (tapCount % 3 === 0) addCritter(px, py);
+    wakeUI();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!pointerActive) return;
+    const nx = e.clientX, ny = e.clientY;
+    const wx = (nx - px) * 0.15, wy = (ny - py) * 0.15;
+    for (let b of bubbles) {
+      const d = Math.hypot(b.x - nx, b.y - ny);
+      if (d < 160) { b.dx += wx * (1 - d / 160); b.dy += wy * (1 - d / 160); }
+    }
+    for (let c of critters) {
+      const d = Math.hypot(c.x - nx, c.y - ny);
+      if (d < 160) { c.dx += wx * (1 - d / 160) * 0.7; c.dy += wy * (1 - d / 160) * 0.7; }
+    }
+    px = nx; py = ny;
+  });
+  window.addEventListener('pointerup', () => pointerActive = false);
+  canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+  // ---------- UI idle fade (gallery-proof) ----------
+  let idleTimer = null;
+  function wakeUI() {
+    lastHuman = performance.now();   // humans present: autopilot stands down
+    document.body.classList.remove('idle-ui');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => document.body.classList.add('idle-ui'), 7000);
+  }
+  ['pointerdown', 'pointermove'].forEach(ev => window.addEventListener(ev, wakeUI));
+  wakeUI();
+
+  // ---------- optional remote (its own room; fails silently offline) ----------
+  const ROOM = new URLSearchParams(location.search).get('room') || 'loop';
+  document.getElementById('room-label').textContent = 'room: ' + ROOM;
+  const remoteDot = document.getElementById('remote-dot');
+  const remoteText = document.getElementById('remote-text');
+  (function tryRemote() {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/mqtt/dist/mqtt.min.js';
+    s.onload = () => {
+      try {
+        const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+        const topic = 'ooakosimo/loop/' + ROOM;
+        client.on('connect', () => {
+          client.subscribe(topic);
+          remoteDot.classList.add('on'); remoteText.textContent = 'remote live';
+        });
+        client.on('message', (t, payload) => {
+          let m; try { m = JSON.parse(payload.toString()); } catch (e) { return; }
+          lastHuman = performance.now();  // a remote press is a human — autopilot yields
+          if (m.a === 'source') setMode(m.v);
+          if (m.a === 'flash') flashName();
+          if (m.a === 'burst') burst(W / 2, H * 0.85, 2.5);
+          if (m.a === 'critter') addCritter(Math.random() * W, Math.random() * H);
+          if (m.a === 'mute') muteButton.click();
+          if (m.a === 'playpause') playPauseButton.click();
+          if (m.a === 'weather') setWeather(m.v || (weather === 'rain' ? 'sun' : 'rain'));
+        });
+        client.on('close', () => { remoteDot.classList.remove('on'); remoteText.textContent = 'remote off'; });
+      } catch (e) { /* deck lives fine without a remote */ }
+    };
+    s.onerror = () => { remoteText.textContent = 'remote off (offline)'; };
+    document.head.appendChild(s);
+  })();
+
+  // ---------- SKY PASS helpers (state lives above the UI wiring) ----------
+  function bandAvg(a, b) { let s = 0; for (let i = a; i < b; i++) s += dataArray[i]; return s / (b - a); }
+  function onBeat() {
+    beatPulse = 1;
+    for (let c of critters) if (Math.random() < 0.7) c.pulse = 1;   // beat-pop
+    for (let o of orbiters) o.radius += 10 + Math.random() * 14;     // kicked outward, springs back
+  }
+
+  // ---------- main loop (always running — the piece never sits dead) ----------
+  const t0 = performance.now();
+  function draw() {
+    requestAnimationFrame(draw);
+    const t = (performance.now() - t0) / 1000;
+
+    // --- pick the data source, honestly ---
+    if (mode === 'auto') {
+      autoData(t, dataArray, 1);
+      if (idleFloor) { idleFloor = false; updateBadge(); }
+    } else {
+      const an = mode === 'music' ? musicAnalyser : micAnalyser;
+      if (an) an.getByteFrequencyData(dataArray); else dataArray.fill(0);
+      let sum = 0; for (let i = 0; i < BINS; i++) sum += dataArray[i];
+      if (sum / BINS < 5) quietFrames++; else { quietFrames = 0; if (idleFloor) { idleFloor = false; updateBadge(); } }
+      if (quietFrames > 180 && !idleFloor) { idleFloor = true; updateBadge(); }
+      if (idleFloor) {
+        autoData(t, autoBuf, 0.35);
+        for (let i = 0; i < BINS; i++) dataArray[i] = Math.max(dataArray[i], autoBuf[i]);
+      }
+    }
+
+    // --- VJ sensitivity gain (applies to every source, AUTO included) ---
+    if (sens !== 1) for (let i = 0; i < BINS; i++) dataArray[i] = Math.min(255, dataArray[i] * sens);
+
+    // --- envelopes: attack instantly, let go slowly (house grammar: decay, not blink) ---
+    const low = bandAvg(1, 8), mid = bandAvg(8, 28), high = bandAvg(28, 60);
+    envLow  = low  > envLow  ? low  : envLow  * 0.93;
+    envMid  = mid  > envMid  ? mid  : envMid  * 0.94;
+    envHigh = high > envHigh ? high : envHigh * 0.95;
+    avgLow = avgLow * 0.98 + low * 0.02;
+    if (beatCooldown > 0) beatCooldown--;
+    if (low > avgLow * 1.45 && low > 40 && beatCooldown <= 0) { onBeat(); beatCooldown = 14; }
+    beatPulse *= 0.88;
+    panicLevel *= 0.992;   // slow forgiveness — rattled sky settles over ~10s
+
+    // --- AUTOPILOT: unattended AUTO mode runs its own show ---
+    if (mode === 'auto' && (performance.now() - lastHuman) / 1000 > 25 && t > nextAutoEvent) {
+      const roll = Math.random();
+      if (roll < 0.45) burst(W * (0.2 + Math.random() * 0.6), H * 0.85, 1.5 + Math.random() * 1.2);
+      else if (roll < 0.75) addCritter(Math.random() * W, Math.random() * H);
+      else if (roll < 0.94 || t - lastAutoFlash < 180) addPanic(0.35);
+      else { flashName(); lastAutoFlash = t; }
+      nextAutoEvent = t + 16 + Math.random() * 26;
+    }
+
+    // --- linger trails: the sky veils instead of wiping; louder = longer ghosts ---
+    const energy01 = Math.min(1, (envLow + envMid + envHigh) / 480);
+    const veil = REDUCED ? 1 : Math.max(0.16, 0.55 - energy01 * 0.38);
+    const wx = SKYS[weather];
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, wx.top);
+    sky.addColorStop(1, wx.bot);
+    ctx.globalAlpha = veil;
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    const centerX = W / 2, centerY = H / 2;
+
+    const cloudSway = envLow / 255;
+    for (let c of clouds) {
+      c.x += c.speed * (1 + panicLevel); if (c.x - c.size > W) c.x = -c.size;
+      c.swayPhase += 0.01;
+      c.sway = Math.sin(c.swayPhase) * 10 * cloudSway + Math.sin(t * 9 + c.swayPhase * 13) * panicLevel * 6;
+      ctx.fillStyle = wx.cloud;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y + c.sway, c.size * 0.5, 0, Math.PI * 2);
+      ctx.arc(c.x + c.size * 0.4, c.y + c.sway, c.size * 0.4, 0, Math.PI * 2);
+      ctx.arc(c.x - c.size * 0.4, c.y + c.sway, c.size * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (weather === 'rain') {
+      ctx.strokeStyle = 'rgba(190,210,230,0.35)'; ctx.lineWidth = 1;
+      const rs = 1 + envMid / 255;
+      for (let d of rain) {
+        d.y += d.spd * rs; d.x -= d.spd * 0.15;
+        if (d.y > H) { d.y = -20; d.x = Math.random() * (W + 60); }
+        ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.len * 0.15, d.y + d.len); ctx.stroke();
+      }
+    }
+    const wingBeat = envMid / 255;
+    for (let b of birds) {
+      b.x += b.speed * (1 + panicLevel * 1.8); if (b.x - b.size > W) b.x = -b.size;
+      b.wingSpeed = 0.3 + wingBeat * 0.5 + panicLevel * 0.7; b.wingPhase += b.wingSpeed;
+      const by = b.y + Math.sin(t * 7 + b.wingPhase * 0.5) * panicLevel * 14;
+      const wingY = Math.sin(b.wingPhase) * b.size * 0.5;
+      ctx.strokeStyle = wx.bird; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(b.x - b.size, by - wingY); ctx.lineTo(b.x, by); ctx.lineTo(b.x + b.size, by - wingY); ctx.stroke();
+    }
+    // --- the middle BREATHES on its own; the music punches on top of the breath ---
+    const breath = Math.sin(t * 0.55) * 0.5 + 0.5;
+    const haloR = 120 + breath * 90 + Math.pow(envLow / 255, 1.4) * 140;
+    const halo = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, haloR);
+    halo.addColorStop(0, `rgba(255,255,255,${0.10 + breath * 0.16})`);
+    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(centerX, centerY, haloR, 0, Math.PI * 2); ctx.fill();
+
+    const ringPunch = Math.pow(envLow / 255, 1.4);           // pops, doesn't sway
+    const ringRadius = 78 + breath * 45 + ringPunch * 170 + beatPulse * 30;
+    for (let i = 0; i < N.loops; i++) {
+      const angle = (i / N.loops) * Math.PI * 2;
+      const x = centerX + Math.cos(angle) * ringRadius;
+      const y = centerY + Math.sin(angle) * ringRadius;
+      const barHeight = dataArray[i % BINS] * 0.5;
+      ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.lineTo(x, y);
+      ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.95, barHeight / 150 + beatPulse * 0.35)})`;
+      ctx.lineWidth = 2 + beatPulse * 2; ctx.stroke();
+    }
+    for (let b of bubbles) {
+      const soundInfluence = envLow / 100;
+      const energy = envMid / 255;
+      if (energy <= 0.25 && panicLevel < 0.05) continue;
+      b.dx += (Math.random() - 0.5) * panicLevel * 0.5;
+      b.dy += (Math.random() - 0.5) * panicLevel * 0.5;
+      b.phase += 0.02;
+      b.dx *= 0.985; b.dy *= 0.985; // wind decays
+      b.x += b.dx; b.y += b.dy;
+      if (b.x < -40) b.x = W + 40; if (b.x > W + 40) b.x = -40;
+      if (b.y < -40) b.y = H + 40; if (b.y > H + 40) b.y = -40;
+      const breathing = Math.sin(b.phase) * 3 * soundInfluence;
+      const r = Math.max(2, b.radius + breathing);
+      ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = b.color + '33'; ctx.fill();
+    }
+    for (let o of orbiters) {
+      o.angle += o.speed * (1 + envMid / 255);
+      o.radius += (o.baseRadius - o.radius) * 0.06;  // spring home after the kick
+      const x = centerX + Math.cos(o.angle) * o.radius;
+      const y = centerY + Math.sin(o.angle) * o.radius;
+      ctx.beginPath(); ctx.arc(x, y, o.size, 0, Math.PI * 2);
+      ctx.fillStyle = o.color + 'aa'; ctx.fill();
+    }
+    const hustle = 1 + (envMid / 255) * 0.8 + panicLevel * 1.6;   // they hurry when loud OR rattled
+    const alive = Math.max(0.35, Math.min(1, (envLow + envMid) / 160 + panicLevel)); // quiet = lazy drift, never gone
+    for (let c of critters) {
+      c.pulse = (c.pulse || 0) * 0.9;
+      c.throb = (c.throb || 0) + 0.05 + (envLow / 255) * 0.06 + panicLevel * 0.08;
+      if (panicLevel > 0.02) {                                     // scurry: back-and-forth rattling
+        c.panicPhase = (c.panicPhase || Math.random() * 10) + 0.3 + panicLevel * 0.4;
+        c.dx += Math.sin(c.panicPhase) * panicLevel * 1.5;
+        c.dy += Math.cos(c.panicPhase * 1.3) * panicLevel * 1.5;
+        if (Math.random() < panicLevel * 0.03) { c.dx *= -1.4; c.dy *= -1.2; } // spooked reversal
+      }
+      const cap = 3 + panicLevel * 5;
+      c.dx = Math.max(-cap, Math.min(cap, c.dx)); c.dy = Math.max(-cap, Math.min(cap, c.dy));
+      c.x += c.dx * hustle * alive; c.y += c.dy * hustle * alive;
+      if (c.x < -50) c.x = W + 50; if (c.x > W + 50) c.x = -50;
+      if (c.y < -50) c.y = H + 50; if (c.y > H + 50) c.y = -50;
+      // continuous throb + beat-pop, one transform
+      const th = 1 + Math.sin(c.throb) * (0.06 + (envLow / 255) * 0.08 + panicLevel * 0.05);
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.scale(th + c.pulse * 0.4, th - c.pulse * 0.18);
+      ctx.translate(-c.x, -c.y);
+      drawCritter(ctx, c);
+      drawEyes(c, t);
+      ctx.restore();
+    }
+    // --- play layer: ripples + sparks ---
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i];
+      r.r += Math.max(3.5, r.max / 70); r.alpha *= 0.96;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${r.alpha})`; ctx.lineWidth = 3; ctx.stroke();
+      if (r.r > r.max || r.alpha < 0.03) ripples.splice(i, 1);
+    }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.phase += 0.25;
+      s.x += s.dx + Math.sin(s.phase) * s.wig;   // bendy flight
+      s.y += s.dy; s.dy += 0.055;                // gentle gravity
+      if (s.dy > 2.1) s.dy = 2.1;                // terminal velocity: drift down slowly
+      s.dx *= 0.995;
+      s.life -= 0.004;
+      s.trail.push([s.x, s.y]);
+      if (s.trail.length > 7) s.trail.shift();
+      if (s.trail.length > 1) {                   // ribbon, not dot
+        ctx.globalAlpha = Math.max(0.45, s.life); // never dissolves mid-air
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = Math.max(0.8, s.w * Math.max(0.4, s.life));
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(s.trail[0][0], s.trail[0][1]);
+        for (let k = 1; k < s.trail.length; k++) ctx.lineTo(s.trail[k][0], s.trail[k][1]);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (s.y > H + 60) sparks.splice(i, 1);      // spaghetti exits at the bottom, only
+    }
+
+    // --- fps + VJ HUD ---
+    fpsCount++;
+    const nowMs = performance.now();
+    if (nowMs - fpsLast > 1000) { fps = fpsCount; fpsCount = 0; fpsLast = nowMs; }
+    if (nowMs - hudLast > 250 && vjHud) {
+      hudLast = nowMs;
+      let inAvg = 0; for (let i = 0; i < BINS; i++) inAvg += dataArray[i];
+      inAvg = Math.round(inAvg / BINS);
+      vjHud.textContent = 'LOOP ' + VERSION.slice(0, 2) + ' ' + weather.toUpperCase() + ' ' + mode.toUpperCase()
+        + '  in:' + inAvg + '  sens:' + sens.toFixed(1) + '  panic:' + panicLevel.toFixed(2) + '  fps:' + fps;
+    }
+
+    if (musicAudio && !isNaN(musicAudio.duration) && mode === 'music') {
+      timelineScrubber.value = musicAudio.currentTime;
+    }
+  }
+  draw();
+  </script>
+</body>
+</html>

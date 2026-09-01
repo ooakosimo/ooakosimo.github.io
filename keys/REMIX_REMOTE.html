@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MO ON THE KEYS — MQTT REMOTE</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<script src="mqtt.min.js"></script>
+<style>
+:root{--paper:#ded6c3;--ink:#111;--cream:#f5f1e7;--red:#e0452f;--green:#31bd62}*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:var(--paper);font:13px 'Courier New',monospace;touch-action:manipulation}header{position:sticky;top:0;z-index:5;padding:12px;background:#ded6c3f5;border-bottom:3px solid var(--ink)}
+h1{margin:0 0 8px;font-size:17px;letter-spacing:1px}.connection{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.dot{width:10px;height:10px;border-radius:50%;background:#d33}.dot.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+input,select,button{font:12px 'Courier New',monospace}input[type=text]{min-width:0;flex:1;padding:7px;border:2px solid var(--ink);background:var(--cream)}button{min-height:42px;padding:8px 10px;border:2px solid var(--ink);color:var(--ink);background:var(--cream);box-shadow:3px 3px var(--ink);font-weight:bold;cursor:pointer}button:active,.hot{transform:translate(2px,2px);box-shadow:1px 1px var(--ink);background:var(--ink);color:var(--cream)}
+main{max-width:900px;margin:auto;padding:10px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.triggers{grid-template-columns:repeat(4,1fr)}.trigger{min-height:62px;background:var(--red);color:#fff}.start{background:var(--green)}
+.card{margin:10px 0;padding:10px;border:2px solid var(--ink);background:#f5f1e7aa}.card h2{margin:0 0 8px;font-size:14px}.row{display:flex;align-items:center;gap:8px;margin:7px 0}.row label{width:88px;font-weight:bold}.row input[type=range]{flex:1;accent-color:var(--red)}.value{width:42px;text-align:right}
+details{margin:8px 0;border:1px dashed var(--ink);background:#fff8}summary{padding:10px;font-weight:bold;cursor:pointer}.inside{padding:0 10px 10px}.inside select{flex:1;padding:5px}
+.statusline{font-size:10px;opacity:.7}.preset{display:grid;grid-template-columns:35px 1fr 1fr;gap:7px;margin:7px 0}@media(max-width:520px){.triggers{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:repeat(2,1fr)}header{padding:9px}.row label{width:76px}}
+</style></head><body>
+<header><h1>MO ON THE KEYS // REMOTE</h1><div class="connection"><span id="dot" class="dot"></span><span id="status">offline</span><input id="session" type="text" value="mo-keys-ooakosimo"><button id="connect">CONNECT</button></div><details><summary>BROKER SETTINGS</summary><div class="row"><label>WebSocket</label><input id="broker" type="text" value="wss://broker.hivemq.com:8884/mqtt"></div><div class="statusline">Both pages must use the same broker and session. Use a unique session on a public broker.</div></details></header>
+<main>
+<div class="card"><h2>TRANSPORT + PERFORMANCE</h2><div class="grid triggers">
+<button class="trigger start" data-trigger="auto">START SILENT AUTO</button><button class="trigger" data-trigger="speed">SPEED RAMP</button><button class="trigger" data-trigger="sax">SAX STORM</button><button class="trigger" data-trigger="explode">CIRCLE BURST</button><button class="trigger" data-trigger="flash">WHITE FLASH</button><button class="trigger" data-trigger="invert">INVERT</button><button class="trigger" data-trigger="shake">SHAKE</button><button data-trigger="reset">RESET SCENE</button>
+</div></div>
+<div class="card"><h2>MASTER MACROS</h2><div id="macros"></div></div>
+<div class="card"><h2>GLOBAL</h2><div id="global"></div></div>
+<div class="card"><h2>PRESET BANKS</h2><div id="presets"></div></div>
+<div class="card"><h2>MOD PATCH BAY</h2><div class="statusline">Every change is sent immediately. The visual reports its current state back.</div><div id="mods"></div></div>
+</main>
+<script>
+const DEFAULT_URL='wss://broker.hivemq.com:8884/mqtt',DEFAULT_SESSION='mo-keys-ooakosimo';
+const BANDS=['sub','bass','lowMid','mid','high','air'];
+const META={
+ lineSpeed:['line speed',0,10,.01],lineJitter:['line x jitter',0,30,.01],circleSpeed:['circle drift',0,8,.01],circleScale:['circle scale',.2,3,.01],stripeCount:['circle stripes',0,30,1],
+ saxChance:['sax density',0,.5,.005],saxWeight:['sax weight',.2,12,.01],saxFade:['sax linger',1,40,.01],scratches:['film scratches',0,.6,.005],paperPulse:['paper pulse',0,80,.01]
+};
+let client=null,state=null,lastSliderSend=0,url=localStorage.getItem('mo_remote_url')||DEFAULT_URL,session=localStorage.getItem('mo_remote_session')||DEFAULT_SESSION;
+document.getElementById('broker').value=url;document.getElementById('session').value=session;
+const topic=()=> 'ooakosimo/mo-keys/'+session.replace(/[^a-z0-9_-]/gi,'-');
+function setStatus(text,ok=false){document.getElementById('status').textContent=text;document.getElementById('dot').classList.toggle('ok',ok)}
+function connect(){
+ url=document.getElementById('broker').value.trim();session=document.getElementById('session').value.trim()||DEFAULT_SESSION;localStorage.setItem('mo_remote_url',url);localStorage.setItem('mo_remote_session',session);
+ if(client)try{client.end(true)}catch(e){}if(!window.mqtt){setStatus('MQTT library unavailable');return}setStatus('connecting…');
+ client=mqtt.connect(url,{clientId:'mo_remote_'+Math.random().toString(16).slice(2),reconnectPeriod:3000,connectTimeout:10000,clean:true});
+ client.on('connect',()=>{setStatus('online · waiting for visual',true);client.subscribe(topic()+'/state')});
+ client.on('message',(t,p)=>{try{let first=!state;state=JSON.parse(p.toString());setStatus('visual online · '+(state.fps||0)+' fps',true);if(first)renderState();else syncState()}catch(e){}});
+ client.on('reconnect',()=>setStatus('reconnecting…'));client.on('error',()=>setStatus('broker unavailable'))
+}
+function send(command){if(!client||!client.connected){setStatus('not connected');return}if(command.type==='set')lastSliderSend=Date.now();client.publish(topic()+'/cmd',JSON.stringify(command))}
+function fmt(v){return Math.abs(v)>=10?Number(v).toFixed(0):Number(v).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}
+function rangeRow(parent,label,value,min,max,step,path){
+ let row=document.createElement('div');row.className='row';row.innerHTML=`<label>${label}</label><input data-path="${path}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><span class="value">${fmt(value)}</span>`;
+ let input=row.querySelector('input'),out=row.querySelector('.value');input.oninput=()=>{out.textContent=fmt(input.value);send({type:'set',path,value:Number(input.value)})};parent.appendChild(row)
+}
+function renderState(){
+ if(!state)return;let macros=document.getElementById('macros');macros.innerHTML='';rangeRow(macros,'MOTION',state.macros.MOTION,.2,3,.05,'macros.MOTION');rangeRow(macros,'CHAOS',state.macros.CHAOS,0,1,.01,'macros.CHAOS');rangeRow(macros,'CONTRAST',state.macros.CONTRAST,.3,2,.05,'macros.CONTRAST');
+ let global=document.getElementById('global');global.innerHTML='';rangeRow(global,'SENSITIVITY',state.global.SENSITIVITY,.2,3,.1,'global.SENSITIVITY');
+ global.insertAdjacentHTML('beforeend',`<div class="grid"><button data-global="NORMALIZE" class="${state.global.NORMALIZE?'hot':''}">NORMALIZE</button><button data-global="FROZEN" class="${state.global.FROZEN?'hot':''}">FREEZE</button><button data-global="AUTO_CRUISE" class="${state.global.AUTO_CRUISE?'hot':''}">AUTO CRUISE</button><button data-density="1">LIGHT</button><button data-density="2">NORMAL</button><button data-density="3">DENSE</button></div>`);
+ global.querySelectorAll('[data-global]').forEach(b=>b.onclick=()=>send({type:'set',path:'global.'+b.dataset.global,value:!state.global[b.dataset.global]}));global.querySelectorAll('[data-density]').forEach(b=>b.onclick=()=>send({type:'set',path:'global.DENSITY',value:Number(b.dataset.density)}));
+ let mods=document.getElementById('mods');mods.innerHTML='';for(let [key,m] of Object.entries(state.mods)){let meta=META[key],d=document.createElement('details');d.innerHTML=`<summary>${meta[0]} · <span data-band-label="${key}">${m.band}</span></summary><div class="inside"><div class="row"><label>band</label><select data-path="mods.${key}.band">${BANDS.map(b=>`<option ${b===m.band?'selected':''}>${b}</option>`).join('')}</select></div></div>`;let inside=d.querySelector('.inside'),select=d.querySelector('select');select.onchange=()=>send({type:'set',path:`mods.${key}.band`,value:select.value});rangeRow(inside,'min',m.min,meta[1],meta[2],meta[3],`mods.${key}.min`);rangeRow(inside,'max',m.max,meta[1],meta[2],meta[3],`mods.${key}.max`);rangeRow(inside,'curve',m.curve,.25,3,.05,`mods.${key}.curve`);rangeRow(inside,'attack',m.attack,.02,1,.01,`mods.${key}.attack`);rangeRow(inside,'release',m.release,.01,.7,.01,`mods.${key}.release`);mods.appendChild(d)}
+}
+function valueAt(path){return path.split('.').reduce((v,k)=>v&&v[k],state)}
+function syncState(){
+ document.querySelectorAll('[data-path]').forEach(c=>{if(c===document.activeElement)return;let v=valueAt(c.dataset.path);if(v===undefined)return;c.value=v;if(c.type==='range'&&c.nextElementSibling)c.nextElementSibling.textContent=fmt(v)});
+ document.querySelectorAll('[data-band-label]').forEach(x=>x.textContent=state.mods[x.dataset.bandLabel].band);
+ document.querySelectorAll('[data-global]').forEach(b=>b.classList.toggle('hot',!!state.global[b.dataset.global]));
+}
+document.getElementById('connect').onclick=connect;document.querySelectorAll('[data-trigger]').forEach(b=>b.onclick=()=>send({type:'trigger',name:b.dataset.trigger}));
+let presets=document.getElementById('presets');for(let i=1;i<=6;i++)presets.insertAdjacentHTML('beforeend',`<div class="preset"><b>${i}</b><button data-load="${i}">LOAD</button><button data-save="${i}">SAVE CURRENT</button></div>`);
+presets.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>send({type:'preset',action:'load',index:b.dataset.load}));presets.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>send({type:'preset',action:'save',index:b.dataset.save}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(!client||!client.connected))connect()});connect();
+</script></body></html>

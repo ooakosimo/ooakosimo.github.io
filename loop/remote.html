@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Remote v2.1 :: Into The Loop</title>
+  <link rel="icon" href="/gumamela.gif" />
+  <style>
+    /* =========================================================
+       SKY REMOTE v2.1 — Into The Loop's own controller.
+       The piece's cloud-button grown into a control surface.
+       v2 juice: bobbing clouds, googly eyes, squash presses,
+       poofs, balloon sent-note, breathing sun, simmering flash,
+       drifting sky, haptics. v2.1: + THE FORECAST (weather).
+       Not the parade console. Clouds only.
+       ========================================================= */
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; min-height: 100%;
+      background: linear-gradient(#73b4d9, #a3d1e6 70%, #c9e4f0);
+      font-family: sans-serif;
+      color: #0b6b9e;
+      overflow-x: hidden;
+    }
+    /* the whole sky drifts, imperceptibly */
+    body::before {
+      content: ''; position: fixed; inset: -20%;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.18), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(255,255,255,.12), transparent 45%);
+      animation: skydrift 70s ease-in-out infinite alternate;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes skydrift {
+      from { transform: translate(0, 0); }
+      to   { transform: translate(4%, -3%); }
+    }
+    #wrap {
+      position: relative; z-index: 1;
+      max-width: 460px; margin: 0 auto;
+      padding: 2.2rem 1.1rem 3rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    header { text-align: center; color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,.4); }
+    header .eyebrow { font-size: .72rem; letter-spacing: 2px; opacity: .85; margin: 0 0 .3rem; }
+    header h1 { font-family: serif; font-size: 2.1rem; margin: 0; letter-spacing: 1px; }
+    header .sub { font-size: .85rem; opacity: .9; margin: .3rem 0 0; }
+
+    /* breathing sun status */
+    #status {
+      display: flex; justify-content: center; align-items: center; gap: .6rem;
+      font-size: .8rem; font-weight: bold; color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.35);
+    }
+    #dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #d0d0d0; position: relative;
+      animation: sunbreathe 3.2s ease-in-out infinite;
+    }
+    #dot.on { background: #ffd23f; box-shadow: 0 0 10px 2px rgba(255,210,63,.8); }
+    #dot.err { background: #e74c3c; }
+    @keyframes sunbreathe {
+      0%,100% { transform: scale(1); }
+      50%     { transform: scale(1.25); }
+    }
+
+    /* balloon sent-note: released, floats up, ~4.5s linger */
+    #sent-note {
+      text-align: center; font-weight: bold; font-size: .95rem; color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.4);
+      min-height: 1.6em; opacity: 0; pointer-events: none;
+    }
+    #sent-note.go { animation: balloon 4.5s ease-out forwards; }
+    @keyframes balloon {
+      0%   { opacity: 0; transform: translateY(8px); }
+      8%   { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-56px); }
+    }
+
+    .section-label {
+      text-align: center; font-size: .7rem; font-weight: bold;
+      letter-spacing: 3px; color: #fff; opacity: .85;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.35);
+      margin: 0;
+    }
+
+    /* cloud buttons — alive: each bobs on its own phase and rotation */
+    .cloud {
+      position: relative; display: block; width: 100%;
+      min-height: 72px;
+      background: #f0f9ff; border: none; border-radius: 36px;
+      color: #0b6b9e; font-family: serif; font-weight: bold; font-size: 1.3rem;
+      cursor: pointer;
+      padding: .6rem 1rem;
+      margin-top: 28px; /* room for the puffs + eyes */
+      animation: bob var(--bobdur, 4s) ease-in-out var(--bobdelay, 0s) infinite alternate;
+    }
+    @keyframes bob {
+      from { transform: translateY(0) rotate(var(--tilt, 0deg)); }
+      to   { transform: translateY(-6px) rotate(calc(var(--tilt, 0deg) * -1)); }
+    }
+    .cloud::before, .cloud::after {
+      content: ''; position: absolute; background: inherit; border-radius: 50%;
+    }
+    .cloud::before { width: 62px; height: 62px; top: -28px; left: 34px; }
+    .cloud::after  { width: 82px; height: 82px; top: -40px; right: 28px; }
+    .cloud > * { position: relative; z-index: 1; }
+    .cloud .hint { display: block; font-family: sans-serif; font-size: .7rem; font-weight: normal; opacity: .7; }
+
+    /* squash-and-stretch press (springy) */
+    .cloud.pressed { animation: squash .55s cubic-bezier(.2, 2.2, .4, 1) 1; }
+    @keyframes squash {
+      0%   { transform: scale(1, 1); }
+      30%  { transform: scale(1.12, .82); }
+      60%  { transform: scale(.94, 1.08); }
+      100% { transform: scale(1, 1); }
+    }
+
+    /* googly eyes on the big puff */
+    .eyes {
+      position: absolute; top: -34px; right: 34px; z-index: 2;
+      display: flex; gap: 6px; pointer-events: none;
+    }
+    .eye {
+      width: 20px; height: 20px; background: #fff; border: 2px solid #0b6b9e;
+      border-radius: 50%; position: relative; overflow: hidden;
+      transition: transform .25s ease;
+    }
+    .eye.blink { transform: scaleY(.12); }
+    .pupil {
+      position: absolute; width: 9px; height: 9px; background: #000; border-radius: 50%;
+      left: 50%; top: 50%;
+      transform: translate(calc(-50% + var(--px, 0px)), calc(-50% + var(--py, 0px)));
+      transition: transform .6s ease;
+    }
+    .cloud.pressed .eye { transform: scale(1.45); }
+    .cloud.pressed .pupil { width: 6px; height: 6px; }
+
+    .cloud.selected { background: #0b6b9e; color: #f0f9ff; animation: bob var(--bobdur,4s) ease-in-out var(--bobdelay,0s) infinite alternate, srcpulse 2.6s ease-in-out infinite; }
+    .cloud.selected .eye { border-color: #f0f9ff; }
+    @keyframes srcpulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,.0); }
+      50%     { box-shadow: 0 0 18px 4px rgba(255,255,255,.55); }
+    }
+
+    /* the big one: simmers while it waits; biggest craziest eyes, slight spin */
+    .cloud.flash {
+      background: #ffcc80; color: #7e5109;
+      min-height: 96px; font-size: 1.6rem; border-radius: 48px;
+      animation: bob 5s ease-in-out .6s infinite alternate, simmer 3.4s ease-in-out infinite;
+    }
+    @keyframes simmer {
+      0%,100% { box-shadow: 0 6px 22px rgba(199,80,0,.30); }
+      50%     { box-shadow: 0 6px 34px rgba(199,80,0,.55); }
+    }
+    .cloud.flash .eyes { animation: eyespin 9s linear infinite; top: -40px; }
+    @keyframes eyespin { from { transform: rotate(-6deg);} 50% { transform: rotate(6deg);} to { transform: rotate(-6deg);} }
+    .cloud.flash .eye { width: 26px; height: 26px; border-color: #c75000; }
+    .cloud.flash .pupil { width: 12px; height: 12px; }
+
+    .row { display: flex; gap: .9rem; }
+    .row .cloud { font-size: 1.05rem; min-height: 64px; }
+    .row .cloud::before { width: 46px; height: 46px; top: -20px; left: 22px; }
+    .row .cloud::after  { width: 60px; height: 60px; top: -28px; right: 16px; }
+    .row .eyes { top: -24px; right: 22px; }
+    .row .eye { width: 15px; height: 15px; }
+    .row .pupil { width: 7px; height: 7px; }
+
+    /* escaping poofs on send */
+    .poof {
+      position: fixed; width: 14px; height: 14px; border-radius: 50%;
+      background: #fff; pointer-events: none; z-index: 50; opacity: .95;
+      animation: poofout 1s ease-out forwards;
+    }
+    @keyframes poofout {
+      to { transform: translate(var(--dx), var(--dy)) scale(2.4); opacity: 0; }
+    }
+
+    footer {
+      text-align: center; font-size: .72rem; color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.35); opacity: .85;
+      line-height: 1.6;
+    }
+
+    /* desktop: two columns of bigger weather, never a console */
+    @media (min-width: 760px) {
+      #wrap { max-width: 880px; }
+      #controls { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem 2rem; align-items: start; }
+      #controls > .full { grid-column: 1 / -1; }
+      .cloud { min-height: 84px; font-size: 1.45rem; }
+      .cloud.flash { min-height: 118px; font-size: 1.9rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cloud, .cloud.flash, .cloud.selected, #dot, body::before, .cloud.flash .eyes { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <header>
+      <p class="eyebrow">OOAKOSIMO :: SKY REMOTE v2.1</p>
+      <h1>Into The Loop</h1>
+      <p class="sub">you are holding the weather</p>
+    </header>
+
+    <div id="status"><span id="dot"></span><span id="status-text">connecting…</span></div>
+    <div id="sent-note">sent — look up ↑👀</div>
+
+    <div id="controls">
+      <div class="full">
+        <p class="section-label">HOW IT LISTENS</p>
+        <div class="row">
+          <button class="cloud" data-a="source" data-v="auto"><span>Auto</span></button>
+          <button class="cloud" data-a="source" data-v="music"><span>♪ Music</span></button>
+          <button class="cloud" data-a="source" data-v="mic"><span>● Mic</span></button>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">PLAY WITH THE SKY</p>
+        <button class="cloud" data-a="burst"><span>✨ Burst<span class="hint">a fountain fills the sky</span></span></button>
+        <button class="cloud" data-a="critter"><span>🐸 Release a Critter<span class="hint">one more joins the flight</span></span></button>
+      </div>
+
+      <div>
+        <p class="section-label">THE FORECAST</p>
+        <button class="cloud" data-a="weather"><span>☀ / 🌧 Change the Weather<span class="hint">flips the sky sunny ↔ rainy</span></span></button>
+        <p class="section-label" style="margin-top:1.4rem">SOUND</p>
+        <div class="row">
+          <button class="cloud" data-a="playpause"><span>▶ / ⏸</span></button>
+          <button class="cloud" data-a="mute"><span>🔈 / 🔇</span></button>
+        </div>
+      </div>
+
+      <div class="full">
+        <p class="section-label">THE BIG ONE</p>
+        <button class="cloud flash" data-a="flash"><span>⚡ FLASH MY NAME ⚡<span class="hint">OOAKOSIMO across the whole sky</span></span></button>
+      </div>
+    </div>
+
+    <footer>
+      room: <b id="room-word">loop</b><br>
+      Into The Loop v2 · 69th Chonkly mint · reactive audiovisualizer<br>
+      this remote flies one sky only — the parade console is elsewhere
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    const ROOM = new URLSearchParams(location.search).get('room') || 'loop';
+    document.getElementById('room-word').textContent = ROOM;
+    const TOPIC = 'ooakosimo/loop/' + ROOM;
+    const dot = document.getElementById('dot');
+    const statusText = document.getElementById('status-text');
+    const sentNote = document.getElementById('sent-note');
+    let client = null;
+
+    // ---- give every cloud its own life: bob phase, tilt, googly eyes ----
+    document.querySelectorAll('.cloud').forEach((b, i) => {
+      b.style.setProperty('--bobdur', (3.4 + Math.random() * 2.2).toFixed(2) + 's');
+      b.style.setProperty('--bobdelay', (-Math.random() * 4).toFixed(2) + 's');
+      b.style.setProperty('--tilt', ((Math.random() - 0.5) * 1.6).toFixed(2) + 'deg');
+      const eyes = document.createElement('span');
+      eyes.className = 'eyes';
+      eyes.innerHTML = '<span class="eye"><span class="pupil"></span></span><span class="eye"><span class="pupil"></span></span>';
+      b.appendChild(eyes);
+    });
+
+    // pupils wander on individual schedules; occasional blinks
+    function wander(eye) {
+      const p = eye.querySelector('.pupil');
+      const r = eye.offsetWidth * 0.22;
+      const a = Math.random() * Math.PI * 2, d = Math.random() * r;
+      p.style.setProperty('--px', (Math.cos(a) * d).toFixed(1) + 'px');
+      p.style.setProperty('--py', (Math.sin(a) * d).toFixed(1) + 'px');
+      setTimeout(() => wander(eye), 800 + Math.random() * 2600);
+    }
+    function blink(eye) {
+      eye.classList.add('blink');
+      setTimeout(() => eye.classList.remove('blink'), 140);
+      setTimeout(() => blink(eye), 2400 + Math.random() * 5200);
+    }
+    document.querySelectorAll('.eye').forEach(e => {
+      setTimeout(() => wander(e), Math.random() * 1500);
+      setTimeout(() => blink(e), 1000 + Math.random() * 4000);
+    });
+
+    // ---- MQTT ----
+    function connect() {
+      if (typeof mqtt === 'undefined') {
+        dot.className = 'err'; statusText.textContent = 'no internet — remote needs a connection';
+        return;
+      }
+      client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+      client.on('connect', () => { dot.className = 'on'; statusText.textContent = 'connected to the sky'; });
+      client.on('close',   () => { dot.className = '';   statusText.textContent = 'reconnecting…'; });
+      client.on('error',   () => { dot.className = 'err'; statusText.textContent = 'connection trouble'; });
+    }
+    connect();
+
+    // ---- send: squash, wide eyes, poofs, balloon, haptic ----
+    function poofs(btn) {
+      const r = btn.getBoundingClientRect();
+      for (let i = 0; i < 4; i++) {
+        const d = document.createElement('div');
+        d.className = 'poof';
+        d.style.left = (r.left + r.width * (0.2 + Math.random() * 0.6)) + 'px';
+        d.style.top = (r.top + r.height * 0.3) + 'px';
+        const a = Math.PI * (1 + Math.random());   // upward half
+        d.style.setProperty('--dx', (Math.cos(a) * (30 + Math.random() * 50)).toFixed(0) + 'px');
+        d.style.setProperty('--dy', (Math.sin(a) * (30 + Math.random() * 50) - 30).toFixed(0) + 'px');
+        document.body.appendChild(d);
+        d.addEventListener('animationend', () => d.remove());
+      }
+    }
+    function send(a, v, btn) {
+      if (btn) {
+        btn.classList.remove('pressed'); void btn.offsetWidth; btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 700);
+        poofs(btn);
+      }
+      if (navigator.vibrate) navigator.vibrate(15);
+      if (!client || !client.connected) { statusText.textContent = 'not connected yet…'; return; }
+      const msg = { a: a };
+      if (v) msg.v = v;
+      client.publish(TOPIC, JSON.stringify(msg));
+      sentNote.classList.remove('go'); void sentNote.offsetWidth; sentNote.classList.add('go');
+      if (a === 'source') {
+        document.querySelectorAll('[data-a="source"]').forEach(b => b.classList.toggle('selected', b.dataset.v === v));
+      }
+    }
+    document.querySelectorAll('[data-a]').forEach(b => {
+      b.addEventListener('click', () => send(b.dataset.a, b.dataset.v, b));
+    });
+  </script>
+</body>
+</html>

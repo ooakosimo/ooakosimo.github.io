@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHONK PARADE :: melt procession :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<!-- =====================================================================
+  CHONK PARADE — the doorchonk, generalized into an instrument.
+  - ANY aspect: type the surface's W x H (inches, cm, palms — only the
+    ratio matters). Door = 35 x 82.5. Fridge-to-boxes strip = 200 x 40.
+  - MODE: walk (horizontal procession) or fall (vertical, door-style)
+  - PHOTO MELT: drag a photo of the actual mapped objects onto the page
+    (or use LOAD PHOTO). It becomes the background and slowly datamoshes /
+    melts. Every REBIRTH seconds it re-stamps clean and melts again.
+    Chonks walking in front get smeared into it — that's the point.
+  - HOTKEYS: S panel · F fullscreen · 0 hud · M mic (bass boosts melt+hop)
+  ===================================================================== -->
+<style>
+  html,body{ margin:0; padding:0; overflow:hidden; background:#000;
+    font-family:'Courier New', ui-monospace, monospace; }
+  canvas{ display:block; margin:0 auto; }
+  #hud{ position:fixed; top:10px; left:12px; color:rgba(120,170,220,.7);
+    font-size:12px; line-height:1.5; z-index:11; pointer-events:none;
+    white-space:pre; }
+  #drop{ position:fixed; inset:0; display:none; align-items:center;
+    justify-content:center; background:rgba(6,10,16,.7); color:#78dcff;
+    letter-spacing:.3em; font-size:14px; z-index:30; text-transform:uppercase; }
+  #panel{ position:fixed; top:0; right:0; height:100vh; width:320px;
+    background:rgba(12,16,22,.92); border-left:1px solid rgba(80,150,220,.25);
+    color:#bcd8f5; font-size:11px; z-index:20; overflow-y:auto;
+    padding:12px; box-sizing:border-box; display:none;
+    backdrop-filter:blur(4px); }
+  #panel h3{ margin:8px 0 4px; font-size:12px; color:#7fb8ff;
+    letter-spacing:1px; text-transform:uppercase; }
+  #panel .row{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+  #panel label{ width:86px; opacity:.7; }
+  #panel input[type=range]{ flex:1; accent-color:#78dcff; }
+  #panel input[type=number]{ width:64px; background:#0e141c; color:#bcd8f5;
+    border:1px solid rgba(80,150,220,.3); font-family:inherit; padding:3px; }
+  #panel select{ flex:1; background:#0e141c; color:#bcd8f5;
+    border:1px solid rgba(80,150,220,.3); font-family:inherit; font-size:11px; }
+  #panel .val{ width:38px; text-align:right; color:#EEE8DE; }
+  #panel button, #panel .file{ background:none; border:1px solid rgba(80,150,220,.35);
+    color:#78dcff; font-family:inherit; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; padding:7px 8px; cursor:pointer; width:100%; }
+  #panel button:hover{ border-color:#78dcff; }
+  #panel .hint{ opacity:.5; font-size:10px; margin:4px 0 8px; line-height:1.5; }
+  #stage{ position:fixed; top:0; left:0; transform-origin:0 0; }
+  #stage canvas{ display:block; margin:0; }
+  .pinH{ position:fixed; width:28px; height:28px; margin:-14px 0 0 -14px;
+    border:2px solid #78dcff; border-radius:50%; background:rgba(6,10,16,.55);
+    z-index:40; cursor:grab; display:none; touch-action:none; }
+  .pinH.sel{ border-color:#F5943F; background:rgba(245,148,63,.25); }
+  #maphint{ position:fixed; bottom:12px; left:12px; color:#78dcff; font-size:11px;
+    letter-spacing:.15em; z-index:41; display:none; text-transform:uppercase; }
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<div id="stage"></div>
+<div class="pinH" id="pin0"></div><div class="pinH" id="pin1"></div>
+<div class="pinH" id="pin2"></div><div class="pinH" id="pin3"></div>
+<div id="maphint">pin mode :: drag corners · click corner + arrows to nudge · P to exit · saved automatically</div>
+<div id="drop">drop photo to melt</div>
+<div id="panel">
+  <h3>surface</h3>
+  <div class="hint">only the ratio matters. door: 35 x 82.5 · fridge strip: 200 x 40</div>
+  <div class="row"><label>width</label><input type="number" id="aw" value="200" step="0.5">
+    <label style="width:14px">x</label><input type="number" id="ah" value="40" step="0.5">
+    </div>
+  <div class="row"><button id="applyAspect">apply aspect</button></div>
+
+  <h3>mode</h3>
+  <div class="row"><label>travel</label>
+    <select id="mode"><option value="walk">walk across</option>
+    <option value="fall">fall (door)</option></select></div>
+
+  <h3>chonks</h3>
+  <div class="row"><label>count</label><input type="range" id="count" min="1" max="12" step="1" value="3"><span class="val" id="countV">3</span></div>
+  <div class="row"><label>size</label><input type="range" id="size" min="0.04" max="0.5" step="0.01" value="0.16"><span class="val" id="sizeV">0.16</span></div>
+  <div class="row"><label>speed</label><input type="range" id="speed" min="0.1" max="3" step="0.05" value="1"><span class="val" id="speedV">1.00</span></div>
+  <div class="row"><label>pulse</label><input type="range" id="pulse" min="0" max="3" step="0.05" value="1"><span class="val" id="pulseV">1.00</span></div>
+  <div class="row"><label>creature</label>
+    <select id="creatureSel"><option value="stick" selected>stick walker</option>
+    <option value="chonk">classic chonk</option></select></div>
+  <div class="row"><label>outline</label><input type="range" id="outline" min="0" max="2" step="0.05" value="0"><span class="val" id="outlineV">0.00</span></div>
+  <div class="row"><label>chonk color</label><input type="color" id="bodyColIn" value="#0a0a0c"></div>
+  <div class="row"><label>trails</label>
+    <select id="trails"><option value="off" selected>clean walk</option>
+    <option value="on">melt into bg</option></select></div>
+
+  <h3>background</h3>
+  <div class="row"><label>mode</label>
+    <select id="bgmode"><option value="photo">photo / paper</option>
+    <option value="camera">live camera</option>
+    <option value="solid">solid color</option>
+    <option value="clear">plate (chonks only)</option></select></div>
+  <div class="row"><label>color</label><input type="color" id="bgcol" value="#00ff00"></div>
+  <div class="hint">solid: cycle colors to find what the projector renders best. pure green = chroma-key it in resolume; pure black = add/screen blend. plate mode = no background, no melt — clean chonk pass for deck layers. live camera: asks permission only when you select it; grabs a fresh frame every rebirth, then melts it.</div>
+
+  <h3>photo melt</h3>
+  <div class="row"><label class="file" style="display:block;text-align:center">
+    load photo<input type="file" id="photoIn" accept="image/*" style="display:none"></label></div>
+  <div class="row"><label>melt</label><input type="range" id="melt" min="0" max="3" step="0.05" value="1"><span class="val" id="meltV">1.00</span></div>
+  <div class="row"><label>mosh</label><input type="range" id="mosh" min="0" max="3" step="0.05" value="0.8"><span class="val" id="moshV">0.80</span></div>
+  <div class="row"><label>rebirth s</label><input type="range" id="rebirth" min="4" max="60" step="1" value="18"><span class="val" id="rebirthV">18</span></div>
+  <div class="hint">no photo loaded = paper + faint chamber frames. drag an image anywhere on the page anytime.</div>
+
+  <h3>mapping (deck mode)</h3>
+  <div class="row"><button id="mapBtn">pin corners (P)</button></div>
+  <div class="row"><button id="mapReset">reset mapping</button></div>
+  <div class="hint">drag the four corners onto the surface. saves on this device, survives reboots. reset returns to flat centered.</div>
+
+  <h3>remote console</h3>
+  <div class="row"><label>room</label><input type="number" id="roomIn" value="0" style="display:none"><span class="val" id="roomV" style="width:auto"></span></div>
+  <div class="row"><span class="val" id="mqttV" style="width:auto;text-align:left">connecting…</span></div>
+  <div class="hint">open the console page on any phone, enter the same room word, fly the piece. last pilot shows on the hud.</div>
+</div>
+
+<script>
+// ================== STATE ==================
+let CFG = {
+  aw: 200, ah: 40,          // surface ratio
+  mode: "walk",
+  bgmode: "photo", bgcol: "#00ff00", bodyCol: "#0a0a0c",
+  creature: "stick", outline: 0,
+  trails: false,
+  count: 3, size: 0.16, speed: 1, pulse: 1,
+  melt: 1, mosh: 0.8, rebirth: 18
+};
+let W, H, img = null, chonks = [], bgG = null, cam = null;
+let SHOW_HUD = true, SHOW_PANEL = false;
+let lastStamp = -999;
+let micOn = false, analyser = null, micData = null, bass = 0;
+
+// ================== SETUP ==================
+function computeSize(){
+  const aspect = CFG.aw / CFG.ah;
+  W = windowWidth; H = Math.round(W / aspect);
+  if (H > windowHeight){ H = windowHeight; W = Math.round(H * aspect); }
+}
+
+function setup(){
+  computeSize();
+  const cnv = createCanvas(W, H);
+  cnv.parent('stage');
+  pixelDensity(1);            // melt copies work in real pixels
+  strokeCap(ROUND);
+  bgG = createGraphics(W, H); bgG.pixelDensity(1);
+  buildChonks();
+  stampBackground();
+  wirePanel();
+  wireDrop();
+  initMap();
+  initRemote();
+}
+
+function windowResized(){
+  computeSize(); resizeCanvas(W, H);
+  bgG = createGraphics(W, H); bgG.pixelDensity(1);
+  stampBackground();
+}
+
+function buildChonks(){
+  chonks = [];
+  for (let i=0;i<CFG.count;i++){
+    chonks.push({
+      ph: -(i + random(0.2, 0.9)) / Math.max(1, CFG.count),  // enter from off-screen, staggered
+      lane: random(0.15, 0.85),          // cross-axis position
+      dir: random() < 0.5 ? 1 : -1,      // walk direction
+      wob: random(1000),
+      spd: random(0.7, 1.3),
+      pulseT: 0
+    });
+  }
+}
+
+// ================== BACKGROUND ==================
+function stampInto(g){
+  if (CFG.bgmode === "clear"){ g.clear(); return; }
+  if (CFG.bgmode === "solid"){ g.background(color(CFG.bgcol)); return; }
+  if (CFG.bgmode === "camera"){
+    if (cam && cam.width > 0){
+      const s = Math.max(W/cam.width, H/cam.height);
+      const iw = cam.width*s, ih = cam.height*s;
+      g.image(cam, (W-iw)/2, (H-ih)/2, iw, ih);
+    } else {
+      g.background(10, 14, 20);   // waiting for the camera
+    }
+    return;
+  }
+  if (img){
+    // cover-fit the photo
+    const s = Math.max(W/img.width, H/img.height);
+    const iw = img.width*s, ih = img.height*s;
+    g.image(img, (W-iw)/2, (H-ih)/2, iw, ih);
+  } else {
+    g.background(238,232,222);
+    // faint chamber frames so it's alive before a photo arrives
+    g.noFill();
+    for (let i=0;i<8;i++){
+      const t=i/8, w=W*(1-t*0.8), h=H*(1-t*0.8);
+      g.stroke(55,50,45, 30-i*3); g.strokeWeight(map(i,0,8,2.5,0.6));
+      g.rect(W/2-w/2, H/2-h/2, w, h);
+    }
+  }
+}
+
+function stampBackground(){
+  stampInto(window);          // main canvas (trails mode melts here)
+  if (bgG) stampInto(bgG);    // buffer (clean-walk mode melts here)
+  lastStamp = millis()/1000;
+  if (typeof mapRefresh === 'function') mapRefresh();
+}
+
+// ================== AUDIO (optional) ==================
+async function toggleMic(){
+  if (micOn){ micOn=false; return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    if (ac.state === 'suspended') await ac.resume();   // browsers start contexts asleep
+    const src = ac.createMediaStreamSource(stream);
+    analyser = ac.createAnalyser(); analyser.fftSize = 256;
+    src.connect(analyser);
+    micData = new Uint8Array(analyser.frequencyBinCount);
+    micOn = true;
+  }catch(e){ console.error(e); }
+}
+function readMic(){
+  if (!micOn || !analyser){ bass = 0; return; }
+  analyser.getByteFrequencyData(micData);
+  let s=0; const n=Math.max(4, Math.floor(micData.length*0.08));
+  for (let i=0;i<n;i++) s+=micData[i];
+  bass = (s/n)/255;
+}
+
+// ================== DRAW ==================
+function draw(){
+  readMic();
+  const t = millis()/1000;
+
+  // rebirth: re-stamp the clean image, let it melt again
+  if (t - lastStamp > CFG.rebirth) stampBackground();
+
+  if (CFG.bgmode === "clear"){
+    clear();               // plate mode: pure chonk pass, nothing persists
+  } else if (CFG.trails){
+    meltPass(window);      // classic: chonks smear into the melting canvas
+    moshPass(window);
+  } else {
+    meltPass(bgG);         // clean walk: background melts on its own layer,
+    moshPass(bgG);         // chonks stay crisp on top
+    image(bgG, 0, 0, W, H);
+  }
+
+  // chonks on top
+  for (const c of chonks){
+    // the doorchonk bottom-moment, generalized: sometimes a chonk slows
+    // almost to a stop and breathes/glows for a beat, then walks on
+    if (c.pulseT > 0){
+      c.pulseT -= deltaTime/1000;
+    } else if (random() < 0.0009 * CFG.pulse * (1 + bass*3)){
+      c.pulseT = 1.8;
+    }
+    const pk = c.pulseT > 0 ? Math.sin(Math.min(1, c.pulseT/1.8) * Math.PI) : 0;
+    c.pk = pk;
+    const spd = 0.05 * CFG.speed * c.spd * (1 + bass*1.5) * (1 - pk*0.88);
+    c.ph += spd*deltaTime/1000;
+    if (c.ph > 1) c.ph = -random(0.05, 0.5);   // exit fully, breathe, re-enter
+    drawChonkOnPath(c, t);
+  }
+
+  drawHUD(t);
+
+  // make-your-mark: pilot name flashes on the wall
+  if (SHOUT.name && millis() - SHOUT.t0 < 3500){
+    const k = 1 - (millis() - SHOUT.t0) / 3500;
+    push();
+    translate(W/2, H/2);
+    rotate(Math.sin(millis()*0.004) * 0.03);
+    textAlign(CENTER, CENTER);
+    textFont('Courier New');
+    textStyle(BOLD);
+    const ts = Math.min(W / Math.max(4, SHOUT.name.length) * 1.4, H * 0.4);
+    textSize(ts);
+    strokeWeight(Math.max(3, ts*0.06));
+    stroke(238,232,222, 230*k); fill(10,10,14, 240*k);
+    text(SHOUT.name, 0, 0);
+    pop();
+  }
+}
+
+function meltPass(g){
+  // vertical smear: copy thin strips downward with jitter
+  const n = Math.floor(14 * CFG.melt * (1 + bass*2));
+  for (let i=0;i<n;i++){
+    const sx = Math.floor(random(W));
+    const sw = Math.floor(random(6, 42));
+    const sy = Math.floor(random(H));
+    const sh = Math.floor(random(18, 90));
+    const dy = 1 + Math.floor(random(1 + CFG.melt*2 + bass*4));
+    g.copy(sx, sy, sw, sh, sx + Math.floor(random(-1,2)), sy + dy, sw, sh);
+  }
+}
+
+function moshPass(g){
+  // blocky datamosh: whole blocks displaced sideways now and then
+  if (random() > 0.12 * CFG.mosh * (1+bass)) return;
+  const bw = Math.floor(random(W*0.08, W*0.3));
+  const bh = Math.floor(random(H*0.05, H*0.2));
+  const sx = Math.floor(random(W-bw));
+  const sy = Math.floor(random(H-bh));
+  const dx = sx + Math.floor(random(-W*0.06, W*0.06));
+  const dy = sy + Math.floor(random(-H*0.03, H*0.03));
+  g.copy(sx, sy, bw, bh, dx, dy, bw, bh);
+}
+
+function drawChonkOnPath(c, t){
+  const pk = c.pk || 0;
+  const s = Math.min(W,H) * CFG.size * (1 + bass*0.25)
+          * (1 + 0.14*Math.sin(t*2.3 + c.wob)*pk);      // gentle breathing while pulsing
+  let x, y, facing;
+  if (CFG.mode === "walk"){
+    const k = c.dir > 0 ? c.ph : 1 - c.ph;
+    x = lerp(-s, W + s, k);
+    y = H * c.lane + Math.sin(t*6 + c.wob)*s*0.06;   // waddle bob
+    facing = c.dir;
+  } else {
+    x = W * c.lane + Math.sin(c.ph*TWO_PI*2 + c.wob)*W*0.1;
+    y = lerp(-s, H + s, c.ph);
+    facing = 0;
+  }
+  if (pk > 0){
+    noFill();
+    for (let r=0;r<3;r++){
+      stroke(245,242,235, (70 - r*20) * pk);
+      strokeWeight(2.2 - r*0.6);
+      circle(x, y, s*(1.5 + r*0.4 + 0.25*Math.sin(t*3 + c.wob)));
+    }
+  }
+  if (CFG.creature === 'stick') drawStick(x, y, s, facing, t, c.wob);
+  else drawChonk(x, y, s, facing, t, c.wob);
+}
+
+// ---- stick walker: chonk head on stick body, scissor legs, flapping arms,
+//      line boil, optional paper outline so it survives melt mode ----
+function drawStick(x, y, s, facing, t, seed){
+  push();
+  translate(x, y);
+  rotate(Math.sin(t*6 + seed)*0.04);
+  const bc = color(CFG.bodyCol);
+  const b = () => random(-s*0.02, s*0.02);        // line boil
+  const gait = Math.sin(t*9 + seed);              // walk cycle
+  const flap = Math.sin(t*9 + seed + Math.PI/2);  // arms offset from legs
+  const ow = CFG.outline * s * 0.05;              // outline underlay width
+
+  // limb drawer: paper underlay first (if outline on), then the ink stroke
+  const ln = (x1,y1,x2,y2) => {
+    if (ow > 0.01){
+      stroke(245,242,235); strokeWeight(s*0.07 + ow*2);
+      line(x1,y1,x2,y2);
+    }
+    stroke(bc); strokeWeight(s*0.07);
+    line(x1,y1,x2,y2);
+  };
+
+  noFill();
+
+  // spine
+  ln(b(), -s*0.30 + b(), b(), s*0.12 + b());
+
+  // arms: flapping from the shoulder
+  const armY = -s*0.20;
+  const fl = flap * s * 0.22;
+  ln(0, armY, -s*0.34 + b(), armY + fl + b());
+  ln(0, armY,  s*0.34 + b(), armY - fl + b());
+
+  // legs: scissor stride
+  const hipY = s*0.12;
+  const stride = gait * s * 0.28 * (facing !== 0 ? 1 : 0.6);
+  ln(0, hipY, -stride + b(), s*0.72 + b());
+  ln(0, hipY,  stride + b(), s*0.72 + b());
+
+  // classic chonk head: white face, dark outline, dot eyes, smile
+  fill(245,242,235); stroke(bc); strokeWeight(s*0.05);
+  ellipse(b(), -s*0.52 + b(), s*0.46, s*0.49);
+  const look = facing !== 0 ? facing*s*0.05 : Math.sin(t + seed)*s*0.04;
+  noStroke(); fill(bc);
+  ellipse(-s*0.10 + look, -s*0.545, s*0.075, s*0.075);
+  ellipse( s*0.10 + look, -s*0.545, s*0.075, s*0.075);
+  noFill(); stroke(bc); strokeWeight(s*0.035);
+  arc(0, -s*0.43, s*0.22, s*0.12, 0.1, Math.PI - 0.1);
+
+  pop();
+}
+
+// ---- chonk anatomy, house style ----
+function drawChonk(x, y, s, facing, t, seed){
+  push();
+  translate(x, y);
+  rotate(Math.sin(t*7 + seed)*0.05);
+
+  const breathe = Math.sin(t*4 + seed)*s*0.04;
+  const bc = color(CFG.bodyCol);
+
+  stroke(bc); strokeWeight(s*0.09);
+  for (let i=0;i<5;i++){
+    const off = random(-s*0.05, s*0.05);
+    line(off, breathe + s*0.1, off + random(-s*0.14, s*0.14), s*1.05 + breathe);
+  }
+  noStroke(); fill(bc);
+  ellipse(0, breathe + s*0.35, s*0.7, s*1.5);
+  fill(245,242,235); stroke(15); strokeWeight(s*0.06);
+  ellipse(0, breathe - s*0.25, s*0.58, s*0.62);
+  const look = facing !== 0 ? facing*s*0.06 : Math.sin(t + seed)*s*0.04;
+  noStroke(); fill(12,12,14);
+  ellipse(-s*0.14 + look, breathe - s*0.27, s*0.1, s*0.1);
+  ellipse( s*0.14 + look, breathe - s*0.27, s*0.1, s*0.1);
+  noFill(); stroke(12,12,14); strokeWeight(s*0.04);
+  arc(0, breathe - s*0.05, s*0.3, s*0.16, 0.1, Math.PI - 0.1);
+  pop();
+}
+
+function drawHUD(t){
+  const h = document.getElementById('hud');
+  if (!SHOW_HUD){ h.textContent=''; return; }
+  h.textContent =
+`CHONK PARADE ${CFG.mode.toUpperCase()} ${W}x${H} (${CFG.aw}:${CFG.ah})
+chonks:${CFG.count} melt:${CFG.melt.toFixed(2)} mosh:${CFG.mosh.toFixed(2)} rebirth:${CFG.rebirth}s
+photo:${img?'loaded':'none'} mic:${micOn?'LIVE '+bass.toFixed(2):'off'}  S panel F full M mic P pin
+${REMOTE.pilot ? 'pilot :: ' + REMOTE.pilot : 'console :: room "' + REMOTE.room + '"'}`;
+}
+
+// ================== INPUT ==================
+function keyPressed(){
+  const k = key.toLowerCase();
+  if (k==='s'){ SHOW_PANEL=!SHOW_PANEL;
+    document.getElementById('panel').style.display = SHOW_PANEL?'block':'none'; }
+  if (k==='0') SHOW_HUD = !SHOW_HUD;
+  if (k==='f'){ fullscreen(!fullscreen()); }
+  if (k==='m') toggleMic();
+  if (k==='p') toggleMapMode();
+  if (MAP.mode && MAP.sel >= 0){
+    const st = keyIsDown(SHIFT) ? 10 : 1;
+    if (keyCode === LEFT_ARROW)  nudgeCorner(MAP.sel, -st, 0);
+    if (keyCode === RIGHT_ARROW) nudgeCorner(MAP.sel,  st, 0);
+    if (keyCode === UP_ARROW)    nudgeCorner(MAP.sel, 0, -st);
+    if (keyCode === DOWN_ARROW)  nudgeCorner(MAP.sel, 0,  st);
+    if (keyCode === ESCAPE) toggleMapMode();
+    return false;
+  }
+}
+
+function wirePanel(){
+  const $ = id => document.getElementById(id);
+  const bindRange = (id, key, fmt) => {
+    $(id).addEventListener('input', ()=>{
+      CFG[key] = parseFloat($(id).value);
+      $(id+'V').textContent = fmt(CFG[key]);
+      if (key==='count') buildChonks();
+    });
+  };
+  bindRange('count','count', v=>v.toFixed(0));
+  bindRange('size','size', v=>v.toFixed(2));
+  bindRange('speed','speed', v=>v.toFixed(2));
+  bindRange('pulse','pulse', v=>v.toFixed(2));
+  bindRange('outline','outline', v=>v.toFixed(2));
+  bindRange('melt','melt', v=>v.toFixed(2));
+  bindRange('mosh','mosh', v=>v.toFixed(2));
+  bindRange('rebirth','rebirth', v=>v.toFixed(0));
+  $('mode').addEventListener('change', ()=>{ CFG.mode = $('mode').value; });
+  $('bgmode').addEventListener('change', ()=>{
+    CFG.bgmode = $('bgmode').value;
+    if (CFG.bgmode === 'camera' && !cam){
+      cam = createCapture(VIDEO, ()=>stampBackground());  // permission asked here, not before
+      cam.hide();
+    }
+    stampBackground();
+  });
+  $('bgcol').addEventListener('input', ()=>{
+    CFG.bgcol = $('bgcol').value;
+    if (CFG.bgmode === 'solid') stampBackground();
+  });
+  $('bodyColIn').addEventListener('input', ()=>{ CFG.bodyCol = $('bodyColIn').value; });
+  $('creatureSel').addEventListener('change', ()=>{ CFG.creature = $('creatureSel').value; });
+  $('trails').addEventListener('change', ()=>{
+    CFG.trails = $('trails').value === 'on';
+    stampBackground();        // fresh start for whichever surface takes over
+  });
+  $('applyAspect').addEventListener('click', ()=>{
+    CFG.aw = Math.max(1, parseFloat($('aw').value)||200);
+    CFG.ah = Math.max(1, parseFloat($('ah').value)||40);
+    computeSize(); resizeCanvas(W, H);
+    bgG = createGraphics(W, H); bgG.pixelDensity(1);
+    stampBackground();
+  });
+  $('photoIn').addEventListener('change', e=>{
+    if (e.target.files && e.target.files[0]) loadPhotoFile(e.target.files[0]);
+  });
+}
+
+function wireDrop(){
+  const drop = document.getElementById('drop');
+  addEventListener('dragover', e=>{ e.preventDefault(); drop.style.display='flex'; });
+  addEventListener('dragleave', e=>{ if (e.target===document.body||e.target===drop) drop.style.display='none'; });
+  addEventListener('drop', e=>{
+    e.preventDefault(); drop.style.display='none';
+    if (e.dataTransfer.files && e.dataTransfer.files[0])
+      loadPhotoFile(e.dataTransfer.files[0]);
+  });
+}
+
+function loadPhotoFile(file){
+  const url = URL.createObjectURL(file);
+  loadImage(url, im=>{ img = im; stampBackground();
+    URL.revokeObjectURL(url); });
+}
+/* ================= MAPPING MODULE (deck mode) ================= */
+/* corner-pin the whole stage via CSS matrix3d homography.
+   corners saved to localStorage -> survives reboots. */
+const MAP = { mode:false, sel:-1, corners:null };
+
+function mapKey(){ return 'ooak_map_' + location.pathname; }
+
+function defaultCorners(){
+  const x = Math.max(0, (window.innerWidth  - W) / 2);
+  const y = Math.max(0, (window.innerHeight - H) / 2);
+  return [[x,y],[x+W,y],[x,y+H],[x+W,y+H]];   // TL TR BL BR
+}
+
+// --- homography math (general 2D projection -> matrix3d) ---
+function mAdj(m){
+  return [ m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+           m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+           m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3] ];
+}
+function mMul(a,b){
+  const c=[];
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+    let s=0; for(let k=0;k<3;k++) s+=a[3*i+k]*b[3*k+j]; c[3*i+j]=s;
+  } return c;
+}
+function mMulV(m,v){
+  return [ m[0]*v[0]+m[1]*v[1]+m[2]*v[2],
+           m[3]*v[0]+m[4]*v[1]+m[5]*v[2],
+           m[6]*v[0]+m[7]*v[1]+m[8]*v[2] ];
+}
+function basisToPoints(p1,p2,p3,p4){
+  const m=[p1[0],p2[0],p3[0], p1[1],p2[1],p3[1], 1,1,1];
+  const v=mMulV(mAdj(m),[p4[0],p4[1],1]);
+  return mMul(m,[v[0],0,0, 0,v[1],0, 0,0,v[2]]);
+}
+function applyMap(){
+  const c = MAP.corners || defaultCorners();
+  const src = basisToPoints([0,0],[W,0],[0,H],[W,H]);
+  const dst = basisToPoints(c[0],c[1],c[2],c[3]);
+  let t = mMul(dst, mAdj(src));
+  for(let i=0;i<9;i++) t[i] = t[i]/t[8];
+  const m3d = [ t[0],t[3],0,t[6],  t[1],t[4],0,t[7],
+                0,0,1,0,           t[2],t[5],0,t[8] ];
+  document.getElementById('stage').style.transform =
+    'matrix3d(' + m3d.join(',') + ')';
+  positionHandles();
+}
+function positionHandles(){
+  const c = MAP.corners || defaultCorners();
+  for(let i=0;i<4;i++){
+    const h = document.getElementById('pin'+i);
+    h.style.left = c[i][0]+'px'; h.style.top = c[i][1]+'px';
+  }
+}
+function saveMap(){
+  try{ localStorage.setItem(mapKey(), JSON.stringify(MAP.corners)); }catch(e){}
+}
+function loadMap(){
+  try{
+    const s = localStorage.getItem(mapKey());
+    if (s) MAP.corners = JSON.parse(s);
+  }catch(e){}
+}
+function resetMap(){
+  MAP.corners = null;
+  try{ localStorage.removeItem(mapKey()); }catch(e){}
+  applyMap();
+}
+function nudgeCorner(i, dx, dy){
+  if (!MAP.corners) MAP.corners = defaultCorners();
+  MAP.corners[i][0]+=dx; MAP.corners[i][1]+=dy;
+  applyMap(); saveMap();
+}
+function toggleMapMode(){
+  MAP.mode = !MAP.mode;
+  for(let i=0;i<4;i++)
+    document.getElementById('pin'+i).style.display = MAP.mode?'block':'none';
+  document.getElementById('maphint').style.display = MAP.mode?'block':'none';
+  if (!MAP.mode) MAP.sel = -1;
+  positionHandles();
+}
+function mapRefresh(){ applyMap(); }
+
+function initMap(){
+  loadMap();
+  applyMap();
+  document.getElementById('mapBtn').addEventListener('click', toggleMapMode);
+  document.getElementById('mapReset').addEventListener('click', resetMap);
+  for(let i=0;i<4;i++){
+    const h = document.getElementById('pin'+i);
+    h.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      MAP.sel = i;
+      for(let j=0;j<4;j++) document.getElementById('pin'+j)
+        .classList.toggle('sel', j===i);
+      const move = ev=>{
+        if (!MAP.corners) MAP.corners = defaultCorners();
+        MAP.corners[i]=[ev.clientX, ev.clientY];
+        applyMap();
+      };
+      const up = ()=>{ saveMap();
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up); };
+      addEventListener('pointermove', move);
+      addEventListener('pointerup', up);
+    });
+  }
+}
+
+/* ================= REMOTE CONSOLE LINK ================= */
+/* phones publish, this page listens. public MQTT relay over websockets —
+   works across different networks; both ends just need internet. */
+const REMOTE = {
+  room: (new URLSearchParams(location.search).get('room')) || 'hq',
+  pilot: '', client: null
+};
+const SHOUT = { name: '', t0: 0 };
+function scaleMap(f){
+  if (!MAP.corners) MAP.corners = defaultCorners();
+  let cx=0, cy=0;
+  for (const c of MAP.corners){ cx+=c[0]/4; cy+=c[1]/4; }
+  for (const c of MAP.corners){
+    c[0] = cx + (c[0]-cx)*f; c[1] = cy + (c[1]-cy)*f;
+  }
+  applyMap(); saveMap();
+}
+function initRemote(){
+  const rv = document.getElementById('roomV');
+  if (rv) rv.textContent = '"' + REMOTE.room + '"  (?room=word in url)';
+  const mv = document.getElementById('mqttV');
+  if (typeof mqtt === 'undefined'){ if(mv) mv.textContent='console lib offline'; return; }
+  try{
+    REMOTE.client = mqtt.connect('wss://broker.emqx.io:8084/mqtt',
+      { reconnectPeriod: 4000 });
+    const topic = 'ooakosimo/parade/' + REMOTE.room;
+    REMOTE.client.on('connect', ()=>{
+      REMOTE.client.subscribe(topic);
+      if(mv) mv.textContent = 'console link LIVE :: ' + topic;
+    });
+    REMOTE.client.on('error', ()=>{ if(mv) mv.textContent='console link error (net?)'; });
+    REMOTE.client.on('message', (t, payload)=>{
+      let msg; try{ msg = JSON.parse(payload.toString()); }catch(e){ return; }
+      if (msg.n) REMOTE.pilot = String(msg.n).slice(0,24);
+      applyRemote(msg);
+    });
+  }catch(e){ if(mv) mv.textContent='console link failed'; }
+}
+function applyRemote(msg){
+  const k = msg.k, v = msg.v;
+  const nums = ['count','size','speed','pulse','outline','melt','mosh','rebirth','aw','ah'];
+  if (nums.indexOf(k) >= 0 && typeof v === 'number'){
+    CFG[k] = v;
+    if (k==='count') buildChonks();
+    if (k==='aw' || k==='ah'){
+      computeSize(); resizeCanvas(W, H);
+      bgG = createGraphics(W, H); bgG.pixelDensity(1);
+      stampBackground();
+    }
+    return;
+  }
+  if (k==='mode' && (v==='walk'||v==='fall')) CFG.mode = v;
+  else if (k==='bgmode' && ['photo','camera','solid','clear'].indexOf(v)>=0){
+    CFG.bgmode = v;
+    if (v==='camera' && !cam){ cam = createCapture(VIDEO, ()=>stampBackground()); cam.hide(); }
+    stampBackground();
+  }
+  else if (k==='bgcol' && typeof v==='string'){ CFG.bgcol = v;
+    if (CFG.bgmode==='solid') stampBackground(); }
+  else if (k==='bodycol' && typeof v==='string'){ CFG.bodyCol = v; }
+  else if (k==='creature' && (v==='stick'||v==='chonk')){ CFG.creature = v; }
+  else if (k==='shout'){
+    if (millis() - SHOUT.t0 > 4000){          // one legend at a time
+      SHOUT.name = (msg.n || 'anon').slice(0, 24);
+      SHOUT.t0 = millis();
+    }
+  }
+  else if (k==='scalemap' && typeof v==='number')
+    scaleMap(Math.max(0.5, Math.min(1.5, v)));
+  else if (k==='trails'){ CFG.trails = !!v; stampBackground(); }
+  else if (k==='corner' && typeof msg.i==='number')
+    nudgeCorner(Math.max(0,Math.min(3,msg.i)), msg.dx||0, msg.dy||0);
+  else if (k==='mapreset') resetMap();
+  else if (k==='restamp') stampBackground();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OOAKOSIMO :: MINI FOLDS — envelope COA + spec zines</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<!--
+  PRINT: A4 portrait · 100% · headers/footers OFF · cream/white paper.
+  Every square: cut on the frame, fold TOP half BACKWARD, then LEFT half
+  BACKWARD → 9×9cm booklet, fits the 10×10 black envelopes.
+  Page 1 = the COA fold (cover wears Kuya Doi's 2005 sketch).
+  Pages 2–4 = one SPEC FOLD per piece (glyph front, the house on the back).
+-->
+<style>
+  :root{ --acc:#b3202a; }
+  body.black{ --acc:#111; }
+  #bar{ position:sticky; top:0; z-index:9; background:#111; color:#eee;
+    padding:10px 14px; font-size:12px; display:flex; gap:10px; align-items:center; }
+  #bar button{ font-family:inherit; font-size:12px; padding:6px 12px; cursor:pointer;
+    background:#eee; border:2px solid #eee; color:#111; font-weight:bold; }
+  #bar button.alt{ background:transparent; color:#eee; }
+  @media print{ #bar{ display:none !important; } }
+  @page { size: A4 portrait; margin: 10mm; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:#EEE8DE; color:#111; font-family:'Courier New',Courier,monospace; }
+  .square{ width:180mm; height:180mm; margin:6mm auto; border:0.3mm solid #bbb;
+    background:#fff; display:grid; grid-template-columns:90mm 90mm;
+    grid-template-rows:90mm 90mm; page-break-after:always; }
+  .q{ padding:7mm; overflow:hidden; display:flex; flex-direction:column; }
+  .q.flip{ transform:rotate(180deg); }
+  .gl{ border-bottom:0.2mm dashed #ddd; } .gr{ border-bottom:0.2mm dashed #ddd; }
+  .front{ align-items:center; text-align:center; justify-content:center; gap:3.5mm;
+    border-right:0.2mm dashed #ddd; }
+  .front h1{ font-size:14.5pt; font-weight:bold; letter-spacing:.14em; }
+  .front .x{ font-weight:normal; }
+  .front .strap{ color:var(--acc); font-size:9pt; font-weight:bold; letter-spacing:.28em; text-transform:uppercase; }
+  .front .foot{ font-size:8pt; letter-spacing:.14em; text-transform:uppercase; }
+  .doi{ width:26mm; height:26mm; object-fit:cover; border:1px solid #111; }
+  .glyph{ width:30mm; height:30mm; color:var(--acc); }
+  .glyph svg{ width:100%; height:100%; }
+  .back{ align-items:center; text-align:center; justify-content:center; gap:3mm;
+    border-left:0.2mm dashed #ddd; }
+  .back .qr{ width:30mm; height:30mm; border:1.2px solid #111;
+    display:flex; align-items:center; justify-content:center; font-size:7pt; color:#888; }
+  .back .t{ font-size:8.5pt; font-weight:bold; letter-spacing:.14em; text-transform:uppercase; }
+  .back .u{ font-size:9.5pt; font-weight:bold; }
+  .back .n{ font-size:8.2pt; line-height:1.55; max-width:72mm; }
+  .il{ border-top:0.2mm dashed #ddd; border-right:0.2mm dashed #ddd; padding-bottom:14mm; }
+  .ir{ border-top:0.2mm dashed #ddd; border-left:0.2mm dashed #ddd; padding-bottom:10mm; }
+  h2.sec{ color:var(--acc); font-size:9.5pt; font-weight:bold; letter-spacing:.2em;
+    text-transform:uppercase; margin-bottom:3mm; }
+  .cert{ font-size:9.5pt; line-height:1.62; }
+  .cert b{ letter-spacing:.04em; }
+  .room{ margin-top:auto; font-size:10pt; font-weight:bold; }
+  .room .line{ display:inline-block; border-bottom:1.2px solid var(--acc); width:36mm; }
+  .row{ font-size:10pt; margin-bottom:3.4mm; }
+  .row b{ letter-spacing:.06em; }
+  .line{ display:inline-block; border-bottom:1.2px solid #111; }
+  .bx{ display:inline-block; width:4mm; height:4mm; border:1.4px solid #111;
+    margin:0 1.4mm -0.6mm 0; }
+  .sig{ margin-top:auto; font-size:9pt; }
+  .sig .line{ width:56mm; }
+  .note{ font-size:8pt; line-height:1.55; margin-top:2mm; }
+  /* spec folds */
+  .work{ font-size:9.1pt; line-height:1.58; }
+  .meta{ font-size:9.5pt; line-height:2.0; }
+  .meta b{ letter-spacing:.06em; }
+  .ed{ margin-top:auto; font-size:10.5pt; font-weight:bold; }
+  .ed .line{ width:13mm; }
+  .house{ font-size:8.6pt; line-height:1.65; text-align:center; max-width:72mm; }
+  .house b{ letter-spacing:.04em; }
+  @media screen{ body{ padding:20px; }
+    .square{ box-shadow:0 6px 30px rgba(0,0,0,.18); } }
+  .foldnote{ max-width:180mm; margin:0 auto 8mm; font-size:12px; line-height:1.6;
+    color:#444; text-align:center; }
+  @media print{ .foldnote{ display:none; } }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button onclick="window.print()">🖨 PRINT (4 pages, A4 PORTRAIT, 100% scale)</button>
+  <button class="alt" id="inkbtn" onclick="toggleInk()">INK: RED ✦</button>
+  <span style="opacity:.75">cut · fold top back · fold left back · sign in ink · never laminate</span>
+</div>
+
+<div class="foldnote">COA FOLD :: cut the square · fold TOP half BACK · fold LEFT half BACK · sign in ink · never laminate</div>
+<div class="square">
+
+  <div class="q flip front gl">
+    <div class="strap">certificate of authenticity</div>
+    <h1>OOAKOSIMO <span class="x">::</span><br>USB EDITION</h1>
+    <img class="doi" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAcFBQYFBAcGBgYIBwcICxILCwoKCxYPEA0SGhYbGhkWGRgcICgiHB4mHhgZIzAkJiorLS4tGyIyNTEsNSgsLSz/wAALCADHAMcBAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/APpGiiiiiiiiiiiiiiiiiiiiiig01Q3OadRRRRRSZpN1JvHPX39qb5ybwm8biMhc9afuXjnrRupRS0UUUUUUUUUUhpaM0Gm7vz7Cl3UbqoanqdrpOmT395KIoIELyMecYHIHqfavKPEHx3sPsRHh5GuppVBgEkW3HqGBI4+nNch4g8aXq6hJYX2uXGvzSoiskJ8q1ilYgFAiYLFcjHPXrVhfEtrc61a/2L5GjC1jEc+rXbSSXCY4KkAnGTnCjOepIArv9E+KNh9lK3F1cXsNvIIbnUpY1SNZW4SNVQfPk55AwMgk11kHi2ynmuN8U8K2oxP5sJVonOMKQM5JBzxnit9JFkQMrDB6Ed6eKWiiiiiiiiikNLXPXfjfw5YIWu9UjhAkMRLK3DjqOnapNP8AGPhzVn8ux1qzmfIACyjJz2Gev4U3xHcalBpi3GkWzXM8UisYlkCl078Ec/Tgk45qe31mC70iDUrXa1s4DSbzsaNe5YHoR3B54q5p+o2eqWS3dlcR3ED5AdDkHBIP6g18+/GLxrLqmu3GlWs5bTbKMAiNhtlmbI545IwfzryyzltYJzNd26zRKu0Rg7fn7E4GeDg8EZxitXw9ZXS61BDE8a3F8vkxzSEZizyXyckEDoc8E5xxUc169lq5t7b/AFVqxjCx/MqAdwTwSTkknoc4rofBOuQWHiS3lhRZp/LaNJWAWCzLHl8Hrgeuc4Hfmr19rtk2tT6jaeJr2506zaNNjOV+1ytIdyxgDIQKSSSTjI55xXoWj+Mb2DUNMttEs52tZpwt7Y3RLS2pYkFVY4+7gEjtur1tXXovP0NPzS0UUUUUUUUhoNcvr3gyz1ycXL3VzbTAbQYmGw8/xKRg/wCc1zOr/Dq1jR0stOia5ePcbm1cROD7xsSCD3AAz7Vx58U694IRIZr1GtkYCKSSMw7gBkoYSMDnIypAOAatap4isvEPhjUrjRLoWN8ZTcX2nSEMkj4CmRWzkA9OM5zjHesjw745n0n4V6va2U5huDKi2wADMnmMFkIA6dSRnvXk5Z7m9XL7WZvmLH73c7j3+tREfv5sMdoYAtgc0Lu3/KzM2eO5x0/P2rQuJHtrIacm2FdwfyR/H2yx6544HbJqlKywJ5MWMEDJHOT/AIVHub5VVQoA4J5OD1z+XTuD7Vrt4o1m2tbS2hvCotC86up+ctIFMhc9TnA69hXo+gfG/VNOtZ3ms/7TgQRrue6EYUkYO1dpPUY6+9eqeCviTpfizQhfOv2FzdizEbvu3SFdy4PoRnH0NduD+dLRRRRRRRSGlNY11Y6pcPIqalDbxEnBW3DOVPY5OPxxXPatpFkqH+0/FC205XatwIoYpIx7MFGPzrz7xxYapc2ttbL4htNctnyqTM6maIk55AbB7cjHSvJNa0m98OaotvcRPDKAGjcqVV1wTkHkEHOODt565FUEvZV88bgpkAJ28DIOQarhtvoxHVj3pUX59u04zwoPBqRZXjfYMbt24Fe3tUfm7p2d2LMTyxOSc0iOyvw3A9qC3VmxgdST64FdNH4Ylg8EX2t3EDIQY44IyDuJcbw3uAik49GrnGDK6pxjAyy+nIGR9RXR+BLpYPFWmI8reS9wCI8kDzVQhGI7kFh17Aivr+2l8+1jkZdpdQxX0zzViiiiiiiikBpTVeSeKJ1R3VWc7VBONx64FUNQ1CG01DT7OWBX/tCRoQxwduI2fp3BC4/GvOfEdlo3iXULuEWFrbRW901u88dmGc4APmFxk7ckjoOleTeJNHvLR2htZ3vrUHbugmaa2Y542k5IPse9cTcQvBM0UkRiZeqsMFT6U35f4qPNZsN90gbRitrTvDGo3uhTawqhbJZRAJCOZJCM7VHrisZ08typU5zg5BHfGR+RoZUX7uVDY4J6mu3+Gfw6vPG+pmaWPytOtyDJKwO18nG1T34JrtPip57eRYQwEW09yJgsP3VhwkAzjplNhA9Ca8r8QRQWHiTWrC3Q7EunjhLDBCrKSM/hW14S0+6v4YPsyDf5qvG6rnYBJkkn6lOfYetfXEZRo1ZPukAgY7dqkooooooNJTQu37vfrTjWTrljLe6YywIrzxMJYg3HzLyMHsSeM+hrzXxJ4gv59Q0TWLVPOFvPJIYZPleCZYGEsOP90EjPUk4zXIr4sn1jRdSjs7gadpIlkZ5gCs0oJZljeQEEZPH515TdXzNOXhVrZMghUkYbSDwc+p7n1qGSGeT97IzM0hyCzZJPqSafJbKtr5yyo2H2tGOSvvUChfuKxyTycdvSvefBPjTRLT4SQR3CfaZdHVWuYVUAb3lKAnjoASSxxjHWsL416Xodl9gltrdItVuyJrl0l3CQEdcdCeBzxwM4ya5v4d/DW/8AHczSq4tdOjIWaZiSTzyEHTJ9a+g7/wDs3wN4LTTLNdiJH5KKrBXAOQZPXPJ59cCvLLT4d654hee9l1a509pFjnKyAvEu4hhHjqFUdeeCAK8t8SXtxq3ifVL+8eCWSWd2d4U2pIRhCVByRkDNe4/Djwjc6X4FN7eKiXGpz26wp0xCZYywPoSAcj0Ar1nRpfP0KwlbJL28bZPfKg1fooooooNJTRTjVK/+2NZSfYHi+0Y+Xzgdn0OORXh/xPa9tklv7/TptJ1Lcjx3VsfMt5pkOEOTyCUOMkdRg15It68mtZLLtmnDyKxPl+YSckgdQCSR6Y4xVa4Hn6hcLGyMgcruAwGwcDFQSs6vt3ByBtIB+7SLN5aSqcsXU5IP3Sccj16VGrMqFUxgY+bHP411XgPWm0DxVB532eWxuyLS8imOIWibOd56YB5GRXb+MYdN8b/EHTNH0e8kvYr94lmKjd9mjUsH2sR02jI7cdK90UafoGnCC2jitra3jyEiAyFAwMAckk4A7k1xdl4S1HxR4kute1vfbW85C29sww0US8FGHTJxnPocetY3xc8Sal4M8P2mkWjRS/2ksyNdMcSAD/WEgdSS45HfrmvNvhX4Q/4TDxoJLy3ZrK0AllVcKMk8Dpj1JHU19MXUUEUKMYglrZgyj22rwQPQf0qzpFqbLRbG1b70MEcZOeuFA/pV6iiiiiikNML/AOzUlN2r6f8A16zta0ay1/RbjTb+LfbzqVYA4K+4PYjqDXzZ4r+FmpaTrs1nYpPcHy3e3KruNxjGQuOhGehz0NclaaZOyXMbaRcXMxjVo2hLKsWSCSwIIPoB6g+lXNL8K6tql1DZ29hO8t8NwPlkFY8hRIc9sjH14rvL74W2ttCdWmlZdM02dYLgQje8qLxJKPYE9PQV0R+AOnT7ni1v9zKoxttBwM5ODv74rctfgj4WgS42pO7SurqXfdswMFcdCCeeQcdsU/wl4em0vxvHc3VpFabbB7S3iQ7siNkBkz2zu478kV6C1tBI+8xIzZHLDJ46Uk0vlOiBHbzDglei+pJPSvA9W07V/iJ401GxkVXMLOI1WQMtvbj5VePB5MgJzjgkDgAAV6Zoui2fw5htre3T/QLkpHdTnJZZz8qyNn+E5A9jj3rq7rT47ueGaVn/AHYZSgPysGwCCO44FXVp1FFFFFFIaDS0GkI61xXxAuv9Fs9KgcxXOqTeQXjBMkcXWRkx0IAzn61z/h+w8TX91Nc2i2j6fHF9kt7m+jZZyACHfYnDZOMFuSOe5qTUNK17Sbq2ltdROp6pJsa8jEflJKkfJSAAnY4Ug+WTgqCeDXYaM1he6Z/oyJLpt6pZBgbRnh0b/ayDkdQQQeRWTpF5L4R1eLw5qOf7NuG2aXdsehwT9nc/3gASCeoHtXWmVfLcqwZl6rkZU9cHHSsaG5tdW1C31SyuPtH2V3tiIxkbJNhGfYEKfzrolPWmSIssZRxuVhgj1zWZpeg6dodq1vplpHaLycqucknPXqcenSs3xBHe+IdMv9HtrKRFkPkvcysqqoyCSoGSSB04HNdJCnlwqjMXKjGT1OO9S4paKKKKKKDSUtFMZlVCzEAAZJPaua060/ta6fV7xRumBjt42UMYoc4YA+r4ySOwAFdIiqvyqoXvgDFV7q2SeDa/y4IZWUZ2kcgj6GuRutKvdJ1qfVdN8qLUZFPnW7N5dvqWBwSwB8qQcc4OcY5HI0I77RPGuhXVnc2rsBhLmxmXbNC4PRl7YOMEEg+uM15r4i1PxH4XutNsIrqa5ulkK2915qq9/CMgQyP3lU98YJGOSRWZ4C8ey23ifUIZ5RbQ3Jac206ykttO4qjE4RyN+QcAkYxXu2matZap532OdZTC+yRQeVbAPP4EH8avZ6+1ZFxr9nbanNYN9oluYoBOyRW7v8hJAIwDkkjp7VF4ajdo7+980Pb31ybi2G0qyoUUYIPQ5Un8a3Vp1FFFFFFFFIaWg1yvizVbqySw0+wCNc6hdJakspIjRgxLfgB+lb1harZafbWiYKwxogI4yAAvT6Crf+FFQTwxyQmN4w6sMFWGQeOhHQj2PFcjr3hyXeLuFZnlt49tvPbjNzB6LgnEqdyjHHHHPNeX3XgfXvEc017ql1HbWVs4aRoJDI0+HGCicNGxwCMkEdxmnaL4FsPtstlrN4yoYftd59pjBlkBkdUIySVADAljyeOKsweFfE3gS6vtV8MXkN3YWoeGeKZtszIhyzehbjjjoQOnFd3onxf8KaoiRXV6dKu2IU2t4pV1JJGM4x2HfvU7+JH1/wAb2mj6JdF7G0je4v7q35ViPlWINyMkkMQOSAcHrXaRKqptRdoHTjFSUtFFFFFFFFIaWkNcRfR/2n8VNIiLHGm2st5Jt6SF28uIEf7ILn8a7Y/c+g71UuLtLZ40dZm3nH7uJnx9cA4/HrRHqEUudqzpgZy8Mij8yAKFuVkQmFkmUdQrDP0APH5mpILmKfIVxuA+ZcFSPqDyKq3mn+Y/n2zCG6AIDFdyse29cjIzjuD7iufXwpp+l+Iba8S1jafUTJBfO0e43G6MNySSQoMZ4B6kdql1a7tdHe1S5kV/tAEVyXG0SAAbiP8AbyQcegNWL/QvD+tPNYSWELTWyBTJEgV4ckMNrgZB4B45/M1BE9/4Tsiklrfa3bJhRNAiPcgesi5G7HYqCcdqt6T4x0PWp3trO823Eb+W0M0TwyK/UqVdQcge1dArU7NFGaM0UUUUUhoNZ2sahFpOmS3kys0SFQwUcgFsE/rXnHhLV7jWPjL4jvtqtaxW4tIArcsFYMpAPYjJ/HFei3GoMumG7toJZm4by0A3nnBGPwNcrbahqOrWVz4kmiuIdPsi72enxEpLKULAvIe4PZegAzXcIVbHyjJAz0PPp+FR3Nuk0BDQJKSOA3H5msU6XdRJ9ogWdpgSY4JpFl8onIJDNggEejdMj2rSsZ7rf5F5F++WMM0sYxExPGFJ5zx+tGryeXp/nghfIdJCxGdoDDdj/gJYfjXMeKrdrt79Raw3N1ZIt3bLNHuRkPyyIQPZOvX5h2rV0eG1sn+0JeSOdTYTqJJdysSg4jBGQABgA9q31+b0446V5/r+k2F34titn0uGbz7xPOuGBWRA0LHKSAgggxjjnOenFX/+EY1zR0Emg6/c3BQDNvqJ8xXA/hVhjb6dD7mtWz1vVth/tLw9dWzDADQSJOreuNpyB9QKWXxOkeUTSNYmOeClmwB/E4FQt4purbL3nhvVoocfK6RrMT9VQkj8qt6b4o0jVnKW16m9RuMcgMbr65DAVtA/rS0UUUhoNYXiudIfD85dtynA24zn5gP51yPwn8PxwQXWvNEDLeySAPkgqFkZcY7cCuyWf7B9qh7ITcIM4GwnLD3wcn8ai8PyefpjWFwEZ4gASowrow3Age4IyK2IXWRNyLtAJXGPQkf0P51PimkfoaoXN39k895Ij5cabgQwy2Bk4BPGBzVCx1C38UaLNdWdx5tpPE0W1kKgN0JyQM/UcVZVbq9/s66R/KhaPdNFt5bKjAJPYHOfwrF3NYWv2W4PlSWNy81q8uSHjUZY4GTwjsAAMnAOMV1FvLFPAssMqyxyKGR1IIZT0II6jB61wvi6SW5nuUtf9el5aLGwk27ZMtktnsBke+eK6bw94gi12yimRQjyQRzYHcMM8U/U9Sn069tzLAn9nOD5twzYaJv4cjHIPT1rXX+X40oHWqN9pVlqSBbq0im2jAZ1yRn0NM0/SINNyts8yxEf6oyFlH0zzWmKKKKQ0Vw3xGZ7mHSdPtrgw3Vxdr5eF3btpDHPtgH8cVt+EIWg8K2yMoVmMjHjG7LsxP45qnrlxEu1/s5+3W6u6W8nAnQ8SIrfdJIA46g0zwRrVhrGl272l5FNKIAsyKuxkIJAyh5HBx+FdYFp1Ia53xhpd/qmlwwafcG3YzKszBtuYTkSD64q9o9vp+m2SaVZOmLNFUxgglQeRkds1pfT6ViavYz37hYp/s7DDxSD/llKpJU+4IyCP7uR3rM0HUr220hrKbSzFcW82xI4iHSOFi3ltgHO0DK4HPy15d4k8davc60sOm2d1/ZSkosklsW8+XJBfGN2FJIX04z2rX0XxVbyanE+q2F3o5tiVaQI0aocMxRgQM4wRj3Fd3qE8+t+C75NPuob4vbShZoSDmUEFRjscYOPWug0u7+12ULSZWYIpkVuGUlQefzNXwfypNw/yaWlooopDSFl/vD8a4HUWn1H4l3TbdsOjadlcdWklPbtwARn3rtraJILKOGJSqIgAA61lalb3UscsM1lDqlnJ1hcAOv0B4IA9wST1Fcr4F8O+HPDHifUXsLm7iuLzCC1vGO6PBLYAxyOTg5OOfWvSc0UVXuYlmtZYjnEilSVPIznNYejaEul+JNSvd3N0kSJzn5EDAA+p5JroM/596gZVaYo3Tgjnock1iWEKQeN9R2M+XsIHKNyuTNcMTn6nH0Fcrd+HdRXxJdackUT6eZo57HJIMZfeZRgY4B2k+vFbV3eaprHhK5s9GnjbVbd4oZJnC45wXfBGDuQnj3PNV4F8Rw668UfhKytrWcMstzFeBSy8qrbQuAcAcEEe9WNG166a1mjazucacJIZ5LuMQ/OvIww+UjBGCB61rWniW3ubWB5Ea0nnjaSNLgrHuxgcZOcZI5xVnTJ9Uktka/swkjSMGUOCFXt0HNXluEYrtDYYkA7TxjrUkE8VzAs0Lh42GQy9DUtFFIapX14lokTSKcSyJCAMcMxxXIaVcpc+N/Esr/Llo7UAcZ2Ywc/8DFdJrmtwaFpBvnhluY1IAWAbmP0x1rm18eWquGt7y1mhIDNBPOsMsfqAXIyfriug0fxBYa188CTbkbad0W4A8dHXKEc9QSPetlXVuVYMp/iGMU7cOfahnVepA4zya5fUvH3hyykaCPUlvbw5VLayVp5GbsMIDjkYJOAO+K4nwh461vXfGOvWrWt5FI6hre3mdDHblMBhjrk7snGelelz6rBbQu8jFvKWORyo6hiQCPXkVXXUkk137OjqyqsbBs5zncAOO/Hesrw9O+teJLjWYZf3BUxjZyGjAQqrZ5DBi544wQPWug1GB5YVmg3edA29VXAL46pk9A3TJ46Vxuh6nYaLe3c0KSPb3RhAZQN2QRHJkH+FdyZxzwa75W3Y245Gc5zxWS/huzudQe5vTPe/NujjmkzFH3wqDA6jqQT71DL4P0m58SSa5cW/wBou3gFrtlIaNEyD8qnIB4GfXFP8MaG2gaY9scfvLiSfahYqu852jJJwP8A9XFbmOvH1x3qK1tYrS1S3gQJFGu1VHQD0qxRRSGsfW18yC3Xbu/0qBvycEn8q5jQ9OnnnuL6RJfs91PLOGUZJBK7enf92c/UVes9Lu7ZFW1vdQhgC7VXywxXJJJ5rM1bw1e3OHuNU1SYZyCYYwB9csB/OuWurZPCb6rfadLcrqU8IWMyzRxRAZ5JAY7j9cCqHhvxj4z/ALIljh1a1u/IlkVkW1Msig/OGaQfLg7hW3Yy+M9cupRN4oe1tYWwzosMRBPYdyB61Zm8JWV+6rquttrLNxGkgeYn8NwA/Ouq0XwnZabCq21n5S4wxkQKx9cAY4x6k/Q1xPjzRZ9A+ImieJIWEMeoMbC5eNAWWSQMoYk4GDkdv4TxW/o907eG7B2uGdksd6wRx71jkjKsSAeWkweO2RmuWs3uFtdXa13W080kk1xcOT5sUaSF0A7EhQQWHHNekeALNLL4f6MifN5lrHK7AAbmZQSTj610bDd/X/CuK17Sf7JfUdQtEO+a2uGhVQDiUhXKgH1Me4ejEk9q2vD5njhvba5uZLloZyoaTA2gxxsV47AsRW8D6UtFFFFFFIax9ehuG0+VrZGeYKQgXtkMpP4Zz+FWbSyW20y1teV8lFXK8ZwMdPfmkuLG1bLTPL+Ejf0NZsiadHu22c7EjO513/8AoRrHvLr7Js8t7K08xwsa31ttY56gBVySRkcHvWBqOlCP4rzSWWgLeR6jYbSHcww+ZG2CTgYbIK49sVq2wn0t/Km/4RzRi/JSENcysfxwcfhXb2Vr5UYfcHcgZcKFz7gDp9KuAfSuT+JGjLrXw71e3+bzI4WuIivVZE+ZSPckY/GuI8HXf9tWWnS7yrGO4iIjJGAYQTkjoQWxn/ZrJlvkWD+zbXCTajLsndQWaKJnCmNM9AQxya9r0fTodH0Wz02At5NpCsMZbqVUBQT+Aq4ZFXgkDPTJxmq95bfa7WSHIXepVW67SQQCPzrEaeWynW93hPNnjjvISNwVjtQMD2GMH3ro42+QZXaf7oOakoooooopDTNnXpkjGcU7H/180x87Gw2046gZx71g3t09tBubUZlOchzFGiY9iwx+tUlTW583NpFbXvyiSN7oqwL9trIxAHuBWH45tdRbT9J1qZDc3GmXCLc2lnIwiaNsrJycHBDJzjgCt620XUldVs0sdHgKgsYIBJIexBY4B784z711Sgr1xUlV7qFLm1lgfgSoUJHYHg/zrwq2lt/Cf27ToL9mFkdjm0iaRmGxyQpxjJLAH3Ap/g7wt4jvdTtLybSbmys7dhJufYZZcMGA+cgjoK9qje7kfb9nEKEZ3M4Zge/AJ7+9SLYIr73zM+fvSHOPpVoL/jWRqp+zYuvKEsBIS4XHJU9D+BPX0+lRaZexW17No5+VogJIMg7WjboAT1IwcjrW4rqyAq3B6GnUUUUUUhphbd92hW/2hTZd+w+XtZscBuhrHhiuLm9aG50kRDGPOBVkz6gHkVZ07RrXS3mmhRfPuCDM4GN5HfHb8KZq2ny6pZXenSJH9luYjE7MecEYOMd8fyFZfg69nnhnsb9plv8ATiLWaN+EbH3ZEHcEAc+ua6sUtRuu78OcHoa5jT/AOg2iblsAj+bJKQjsqkswYjGeRwPyrqNnT26e1KF/yKcKKhePzEZX+ZWBUg989qyFtnjgnsIVRJoI91q2CdqjITJPcHOfY1esLr7TaozMm8KFdVP3XHUY7Yq8DRS0UUGkNRoq7OKZu+cj5eOtPCq3TPHvQwVercemBS/NzjGB0zTfLb/Z9sAnFZZ0GBfE663E5im+z/Z3VeBIu4EZ+mDj6mtkCg0UtFFFFFVJ4N00Ug+/EcjJxgHg/pWdPpH2a9+36e3lSyN+/Qn5ZfUkev061ro+7IbqOcVJRRmlNNJ/Kml1qqhdfvSZ/CnAJ1cuT65qRWC9KaTu69Kdu3ORyvy54oQlvvOfwpwUF/vN07mnh/5Up7UgP606lzSClNJmlzSUjLu+9+lRHbv+bOSRjFTVWeVlfav61Kj09Sfao2YshZeg6g96Z+72B9x56cV//9k=" alt="portrait sketch by Kuya Doi, 2005">
+    <div class="strap">transient archive</div>
+    <div class="foot">hand-coded · signed · verified</div>
+  </div>
+
+  <div class="q flip back gr">
+    <div class="t">scan to verify · the work lives here</div>
+    <div class="qr">QR<br>here</div>
+    <div class="u">ooakosimo.neocities.org</div>
+    <p class="n">the site shows the performance; this stick is the relic.
+    copy the file to wherever you keep the things you keep —
+    the copy is the backup, this signed one is the original.</p>
+    <div class="t">✿ static html :: no platform :: yours</div>
+  </div>
+
+  <div class="q il">
+    <h2 class="sec">this certifies ::</h2>
+    <p class="cert">that this USB stick carries an <b>original, hand-signed,
+    flash-exam-verified (f3)</b> edition of the piece checked on the right —
+    one hand-coded HTML file that runs <b>offline, in any browser, forever</b>.</p>
+    <div class="room"><b>ROOM WORD ::</b> <span class="line">&nbsp;</span></div>
+  </div>
+
+  <div class="q ir">
+    <h2 class="sec">the edition ::</h2>
+    <div class="row"><b>PIECE ::</b><br style="line-height:2.2">
+      <span class="bx"></span>PARADE&nbsp;&nbsp;
+      <span class="bx"></span>COMMUTE&nbsp;&nbsp;
+      <span class="bx"></span>DUSK</div>
+    <div class="row"><b>EDITION No.</b> <span class="line" style="width:12mm">&nbsp;</span>
+      &nbsp;<b>YEAR</b> 2026</div>
+    <div class="row"><b>DATE</b> <span class="line" style="width:32mm">&nbsp;</span></div>
+    <div class="row"><b>COLLECTOR</b> <span class="line" style="width:42mm">&nbsp;</span></div>
+    <div class="sig"><span class="line">&nbsp;</span><br>artist signature — Mohini Ochangco · OOAKOSIMO</div>
+    <p class="note">personal display &amp; resale of this signed edition;
+    the open-web version remains free for all.</p>
+  </div>
+</div>
+
+
+<div class="foldnote">SPEC FOLD :: CHONK <span class="x">::</span> PARADE — cut the square · fold TOP half BACK · fold LEFT half BACK</div>
+<div class="square">
+  <div class="q flip front gl">
+    <div class="glyph"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="24" cy="11" r="6"/><line x1="24" y1="17" x2="24" y2="30"/><line x1="24" y1="30" x2="16" y2="42"/><line x1="24" y1="30" x2="32" y2="42"/><line x1="24" y1="22" x2="14" y2="27"/><line x1="24" y1="22" x2="34" y2="17"/></svg></div>
+    <h1>CHONK <span class="x">::</span> PARADE</h1>
+    <div class="strap">melt procession</div>
+    <div class="foot">OOAKOSIMO · 2026</div>
+  </div>
+  <div class="q flip back gr" style="justify-content:center">
+    <h2 class="sec">the house ::</h2>
+    <p class="house">Every work is a <b>single hand-coded HTML file</b> — no app,
+    no platform, no build — projected into the room and handed over.<br><br>
+    The stream is the stage; the audience is the foley artist. These artworks
+    don't perform for you — <b>they wait for you</b>.<br><br>
+    <b>A system is only alive while someone tends it.</b></p>
+    <div class="t" style="font-size:8.5pt;font-weight:bold;margin-top:auto">ooakosimo.neocities.org · ✿</div>
+  </div>
+  <div class="q il">
+    <h2 class="sec">the work ::</h2>
+    <p class="work">A procession of shadow creatures walking through a slow photographic melt — decay as a medium, attention as a signal. Pilots steer the procession from their phones and flash their names briefly across the wall: present a moment, then surrendered to the melt, like everything else. Descends from the artist's shadow practice (2017), blessed by name by Marko Zubak, a.k.a. Mlibty.</p>
+  </div>
+  <div class="q ir">
+    <h2 class="sec">the record ::</h2>
+    <div class="meta">
+      <b>MEDIUM ::</b> interactive browser-based generative installation — single hand-coded HTML file (JavaScript/p5.js); audience control via phone<br>
+      <b>DIMENSIONS ::</b> variable — resolution-independent<br>
+      <b>DURATION ::</b> continuous real-time, no loop<br>
+      <b>ADDRESS ::</b> ooakosimo.neocities.org/parade
+    </div>
+    <div class="ed">EDITION <span class="line">&nbsp;</span> OF <span class="line">&nbsp;</span></div>
+  </div>
+</div>
+
+
+<div class="foldnote">SPEC FOLD :: LIFE AS WE KEEP<br>ON KEEPING ON — cut the square · fold TOP half BACK · fold LEFT half BACK</div>
+<div class="square">
+  <div class="q flip front gl">
+    <div class="glyph"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="25" width="10" height="10"/><rect x="20" y="16" width="10" height="10"/><rect x="34" y="27" width="8" height="8"/><path d="M4 42 L44 42"/></svg></div>
+    <h1>LIFE AS WE KEEP<br>ON KEEPING ON</h1>
+    <div class="strap">commute deck</div>
+    <div class="foot">OOAKOSIMO · 2026</div>
+  </div>
+  <div class="q flip back gr" style="justify-content:center">
+    <h2 class="sec">the house ::</h2>
+    <p class="house">Every work is a <b>single hand-coded HTML file</b> — no app,
+    no platform, no build — projected into the room and handed over.<br><br>
+    The stream is the stage; the audience is the foley artist. These artworks
+    don't perform for you — <b>they wait for you</b>.<br><br>
+    <b>A system is only alive while someone tends it.</b></p>
+    <div class="t" style="font-size:8.5pt;font-weight:bold;margin-top:auto">ooakosimo.neocities.org · ✿</div>
+  </div>
+  <div class="q il">
+    <h2 class="sec">the work ::</h2>
+    <p class="work">A playable essay about commuter trauma and algorithmic crowds: a voxel world of small runners crossing terrain that shifts between serenity and static. Visitors hold the switch between order and collapse — the daily commute's real question — and the crowd keeps moving either way.</p>
+  </div>
+  <div class="q ir">
+    <h2 class="sec">the record ::</h2>
+    <div class="meta">
+      <b>MEDIUM ::</b> interactive voxel essay — single hand-coded HTML file (JavaScript/three.js); audience switches serene ↔ chaos<br>
+      <b>DIMENSIONS ::</b> variable — resolution-independent<br>
+      <b>DURATION ::</b> continuous real-time, no loop<br>
+      <b>ADDRESS ::</b> ooakosimo.neocities.org/commute
+    </div>
+    <div class="ed">EDITION <span class="line">&nbsp;</span> OF <span class="line">&nbsp;</span></div>
+  </div>
+</div>
+
+
+<div class="foldnote">SPEC FOLD :: PAPER <span class="x">::</span> DUSK — cut the square · fold TOP half BACK · fold LEFT half BACK</div>
+<div class="square">
+  <div class="q flip front gl">
+    <div class="glyph"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 8 L10 26 L24 22 L38 26 Z"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="35" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+    <h1>PAPER <span class="x">::</span> DUSK</h1>
+    <div class="strap">gentle panic, slow dance</div>
+    <div class="foot">OOAKOSIMO · 2026</div>
+  </div>
+  <div class="q flip back gr" style="justify-content:center">
+    <h2 class="sec">the house ::</h2>
+    <p class="house">Every work is a <b>single hand-coded HTML file</b> — no app,
+    no platform, no build — projected into the room and handed over.<br><br>
+    The stream is the stage; the audience is the foley artist. These artworks
+    don't perform for you — <b>they wait for you</b>.<br><br>
+    <b>A system is only alive while someone tends it.</b></p>
+    <div class="t" style="font-size:8.5pt;font-weight:bold;margin-top:auto">ooakosimo.neocities.org · ✿</div>
+  </div>
+  <div class="q il">
+    <h2 class="sec">the work ::</h2>
+    <p class="work">An origami flock in four dusk palettes — cranes, planes, torn scraps sharing one sky. Untouched they drift; something unseen spooks them — ripple, scatter, regroup. Nobody dies, nobody wins, life continues. The sky heals without scars; the only memory of the panic lives in you. Descends from Craig Reynolds' <i>boids</i> (1986) — flocking born from watching real crowds.</p>
+  </div>
+  <div class="q ir">
+    <h2 class="sec">the record ::</h2>
+    <div class="meta">
+      <b>MEDIUM ::</b> interactive browser-based flock — single hand-coded HTML file (JavaScript/p5.js); mouse &amp; touch<br>
+      <b>DIMENSIONS ::</b> variable — resolution-independent<br>
+      <b>DURATION ::</b> continuous — a full dusk cycle every ~4 minutes; never the same flight twice<br>
+      <b>ADDRESS ::</b> ooakosimo.neocities.org/dusk
+    </div>
+    <div class="ed">EDITION <span class="line">&nbsp;</span> OF <span class="line">&nbsp;</span></div>
+  </div>
+</div>
+
+<script>
+function toggleInk(){
+  const b=document.body, btn=document.getElementById('inkbtn');
+  b.classList.toggle('black');
+  btn.textContent = b.classList.contains('black') ? 'INK: BLACK ✦' : 'INK: RED ✦';
+}
+</script>
+</body>
+</html>

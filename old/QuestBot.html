@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ooakosimo Quest Log | Field Manual</title>
+    <style>
+        /* --- THE TERMINAL AESTHETIC --- */
+        :root {
+            --bg-color: #050505;
+            --text-color: #a8a8a8;
+            --accent-color: #ff0055; /* Cyberpunk Pink/Red for urgency */
+            --secondary-color: #00e5ff; /* Cyan for Loot/Good stuff */
+            --box-bg: #111;
+            --border-color: #333;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--box-bg);
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Glitchy Headers */
+        h1, h2, h3 {
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 40px;
+            color: var(--secondary-color);
+            text-shadow: 2px 2px 0px var(--accent-color);
+        }
+
+        h3 {
+            margin-top: 40px;
+            font-size: 1.2em;
+            border-left: 5px solid var(--accent-color);
+            padding-left: 15px;
+            border-bottom: none;
+        }
+
+        /* Command Boxes */
+        .command-box {
+            background: #000;
+            border-left: 3px solid var(--secondary-color);
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .cmd {
+            color: var(--secondary-color);
+            font-weight: bold;
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .example {
+            color: #666;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+
+        /* RPG Badge Styles */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            font-weight: bold;
+            border-radius: 3px;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+        .b-main { background: #333; color: #fff; }
+        .b-side { background: var(--accent-color); color: #000; }
+        .b-loot { background: var(--secondary-color); color: #000; }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: #1a1a1a;
+            padding: 15px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.4em; color: #fff; display: block; }
+        .stat-label { font-size: 0.8em; color: #666; }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 0.8em;
+            color: #444;
+            border-top: 1px solid #222;
+            padding-top: 20px;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            h1 { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Ooakosimo<br>Quest Log v4</h1>
+            <p style="text-align: center; color: #666;">// SYSTEM: ONLINE<br>// OBJECTIVE: EXEC. DYSFUNCTION OVERRIDE</p>
+        </header>
+
+        <section>
+            <p><strong>The Mission:</strong> Gamify the friction of daily life. Track quests, calculate loadouts, and monitor resource burn rates in real-time.</p>
+        </section>
+
+        <section>
+            <h3>1. Phase I: Planning <span class="badge b-main">Room Mode</span></h3>
+            <p>While preparing to leave. Add tasks to calculate required cash-on-hand.</p>
+            
+            <div class="command-box">
+                <span class="cmd">/q [Task] [MaxPrice]</span>
+                <span class="example">Ex: /q Cat Food 120</span>
+                <span class="example">Ex: /q Fix Appearance 0 (Ritual)</span>
+            </div>
+
+            <p><strong>Check Loadout:</strong></p>
+            <div class="command-box">
+                <span class="cmd">/check</span>
+                <span class="example">Bot returns: "🎒 Cash Needed: ₱920"</span>
+            </div>
+        </section>
+
+        <section>
+            <h3>2. Phase II: Adventure <span class="badge b-side">Road Mode</span></h3>
+            <p>Execute tasks. If the Actual Price is lower than your Estimate, the bot logs it as Savings.</p>
+
+            <div class="command-box">
+                <span class="cmd">/done [Task] [ActualPrice]</span>
+                <span class="example">Ex: /done Cat Food 105</span>
+                <span class="example">Result: "✅ Complete! 🎉 Saved ₱15!"</span>
+            </div>
+
+            <p><strong>Impulse Buys (Side Quests):</strong><br>
+            Did you buy snacks you didn't plan for?</p>
+            <div class="command-box">
+                <span class="cmd">/side [Item] [Cost]</span>
+                <span class="example">Ex: /side Turon 20</span>
+            </div>
+
+            <p><strong>Looting (PSG):</strong><br>
+            Did you get something for free (e.g., from parents)?</p>
+            <div class="command-box">
+                <span class="cmd">/loot [Item] [Value]</span>
+                <span class="example">Ex: /loot Sugar 80</span>
+                <span class="example">Result: "💎 Loot Secured! Saved ₱80!"</span>
+            </div>
+        </section>
+
+        <section>
+            <h3>3. Phase III: Debrief <span class="badge b-loot">Stats</span></h3>
+            <p>Where did the money go? Review your performance.</p>
+
+            <div class="command-box">
+                <span class="cmd">/burned</span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-value">🔥</span>
+                    <span class="stat-label">TOTAL BURNED</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">💎</span>
+                    <span class="stat-label">TOTAL SAVED</span>
+                </div>
+            </div>
+
+            <p style="margin-top: 20px;"><strong>Memory Recall:</strong><br>
+            Forgot how much you spent last time?
+            </p>
+            <div class="command-box">
+                <span class="cmd">/last</span>
+                <span class="example">Shows the receipt from your previous trip.</span>
+            </div>
+            <p style="margin-top: 20px;"><strong>System Reset:</strong><br>
+            Start a fresh day? (Wipes the current list)</p>
+            <div class="command-box">
+                <span class="cmd">/clear</span>
+                <span class="example">Result: "🌅 New Day! History cleared."</span>
+            </div>
+        </section>
+
+        <footer>
+            <p>Field Notes from the Balcony.</p>
+            <p>System Reset: Use <code>/clear</code> to start a new day.</p>
+        </footer>

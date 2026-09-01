@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OOAKOSIMO :: KEEP IN TOUCH</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<style>
+  :root{ --ink:#060a10; --line:rgba(80,150,220,.28); --cyan:#78dcff;
+    --hud:rgba(120,170,220,.85); --paper:#EEE8DE; --warm:#F5943F;
+    --card:rgba(12,16,22,.6); --cardHover:rgba(12,16,22,.95); }
+  html.light{ --ink:#EEE8DE; --line:rgba(35,32,28,.35); --cyan:#155e8f;
+    --hud:rgba(35,32,28,.85); --paper:#0f0d0a; --warm:#a34d00;
+    --card:rgba(255,255,255,.55); --cardHover:rgba(255,255,255,.95); }
+  body{ margin:0; background:var(--ink); color:var(--hud);
+    font-family:'Courier New', ui-monospace, monospace; }
+  #wrap{ max-width:560px; margin:0 auto; padding:36px 20px 60px; }
+  h1{ color:var(--paper); font-size:26px; letter-spacing:.12em;
+    text-transform:uppercase; margin:0 0 4px; }
+  h1 .x{ color:var(--cyan); }
+  .sub{ font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    margin-bottom:22px; }
+  #themeBtn{ background:none; border:1px solid var(--line); color:var(--cyan);
+    font-family:inherit; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; padding:6px 10px; cursor:pointer;
+    margin-bottom:22px; }
+  a.row{ display:block; border:1px solid var(--line); background:var(--card);
+    color:var(--hud); text-decoration:none; padding:16px 18px;
+    margin-bottom:12px; font-size:16px; letter-spacing:.06em; }
+  a.row:hover, a.row:focus{ border-color:var(--cyan);
+    background:var(--cardHover); outline:none; }
+  a.row b{ color:var(--paper); text-transform:uppercase;
+    letter-spacing:.12em; font-size:14px; display:block; margin-bottom:2px; }
+  a.row span{ font-size:12.5px; opacity:.85; }
+  .deep{ margin-top:26px; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; opacity:.85; }
+  .deep a{ color:var(--cyan); }
+  footer{ margin-top:34px; font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; opacity:.7; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>OOAKOSIMO <span class="x">::</span> KEEP IN TOUCH</h1>
+  <div class="sub">the artist, one tap away</div>
+  <button id="themeBtn">dark / light</button>
+
+  <!-- FILL: replace each # with your real profile link, then delete this note.
+       Rows with real links already set: X, ArtStation, the site. -->
+
+  <a class="row" href="https://x.com/OoakosiM"><b>X / Twitter</b>
+    <span>@OoakosiM — daily transmissions, spamart, naptime ministry</span></a>
+
+  <a class="row" href="https://www.instagram.com/ooakosimo/"><b>Instagram</b>
+    <span>@ooakosimo — works + process</span></a>
+
+  <a class="row" href="https://t.me/OoakosiMo"><b>Telegram</b>
+    <span>@OoakosiMo — say hi</span></a>
+
+  <a class="row" href="https://web.facebook.com/ooakosimohini/"><b>Facebook</b>
+    <span>OoakosiMo - Ooakosimohini — the family-and-friends channel</span></a>
+
+  <a class="row" href="https://www.tiktok.com/@ooakosimo"><b>TikTok</b>
+    <span>@ooakosimo — haha yes really</span></a>
+
+  <a class="row" href="https://www.youtube.com/@ooakosiMo"><b>YouTube</b>
+    <span>@ooakosiMo — performances + documentation</span></a>
+
+  <a class="row" href="https://mohini.artstation.com"><b>ArtStation</b>
+    <span>mohini.artstation.com — portfolio + CV</span></a>
+
+  <a class="row" href="https://ooakosimo.neocities.org"><b>The whole system</b>
+    <span>ooakosimo.neocities.org — instruments, papers, everything</span></a>
+
+  <div class="deep">rabbit hole :: <a href="https://linktr.ee/ooakosimo">the
+  full archive linktree</a> — dig at your own risk hehe</div>
+
+  <footer>static html :: no build :: no platform :: yours — ooakosimo</footer>
+</div>
+<script>
+"use strict";
+document.getElementById('themeBtn').addEventListener('click', () => {
+  document.documentElement.classList.toggle('light');
+  try { localStorage.setItem('ooak_theme',
+    document.documentElement.classList.contains('light') ? 'light' : 'dark');
+  } catch(e) {}
+});
+try { if (localStorage.getItem('ooak_theme') === 'light')
+  document.documentElement.classList.add('light'); } catch(e) {}
+</script>
+</body>
+</html>

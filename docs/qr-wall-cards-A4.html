@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<title>OOAKOSIMO :: wall QR cards (print A4, laminate)</title>
+<!-- PRINT: A4 portrait, 100%% scale, headers/footers OFF, matte paper. LAMINATE these. Cut on dashed lines. 6 cards/sheet. -->
+<style>
+  @page { size: A4 portrait; margin: 7mm; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { background:#fff; color:#111; font-family:'Courier New',Courier,monospace; }
+  .sheet { display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:88mm; }
+  .wcard { border:1.2px dashed #999; padding:5mm; overflow:hidden; text-align:center;
+    display:flex; flex-direction:column; align-items:center; }
+  h1 { font-size:12.5pt; letter-spacing:.14em; margin-bottom:2.5mm; }
+  img.wqr { width:46mm; height:46mm; image-rendering:pixelated; }
+  .wcap { font-size:8pt; line-height:1.45; margin-top:2.5mm; max-width:70mm; }
+  .wurl { font-size:8pt; letter-spacing:.08em; margin-top:1.5mm; font-weight:bold; }
+  .wfoot { font-size:8pt; margin-top:auto; opacity:.75; }
+  @media screen { body{padding:20px;background:#e8e4dc;}
+    .sheet{background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.2);padding:7mm;max-width:210mm;margin:0 auto;} }
+</style></head><body><div class="sheet">
+  <div class="wcard">
+    <h1>PAPER :: DUSK</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACZklEQVR4nO2bwW3jMBBF34QEcqQ6SClUZ1tTOpBKcQfSMQCFvweObO/uxQ6gtYAMD4Ykv8MHiBn/+aJNPLjmt0dJCDTQQN9gNV8jmzHbdQ2wX+aTaA2UJEnqLdFGAEpDumSokqTlWAGBPoV69dz2bc0wfzR65Y2HCwj0oZX/ujcA9avyPwQE+u3d2jKQmkFq/5jFl2sNtKOSGrBmpAU0AWYDQJE0HS4g0IfRrfs+IMlGwH4tQL1k3CIOxwoI9NGl+9X2Zwto2k1HX9PLtQb65v5v2MzG3gmTbCwSlC9jHk6l9YejXlsTXkz+bEk+ZVU1v43aej3aDYamIgFJVDWoSxKUxv4RnfAUaHfwRtmyAMQ6oHlIAElWP99lRwoI9LnaWpJ6MdWFHjXt/Q/vhBPRCU+B9trSPGCaP4SxDv7VPKaGd8fjBAT6ZG3t0/FdRS1uP3q9EbV1DvRuUzzQvYYXV6uhKVzGOdAM64BAGKRGnbasqi2LdTPhGe8ZtAbqDv6aZWgqu4Ovcgcf89aJ0PVd/T3xCNhI8hiD9V19Yu6Bxhm0/nA0+/y75qbZbm0PmIeE1UtuhwoI9Pl5C+De/+0ZFO7gw2WcAv0jg198Z3x7SNr3Mn63zoLezjyV/Y3JtJpRF/8t687jFFp/OLrn7X3o2oupLulaWxCd8CzonuqSmjvB0uijVl0GA1JjttROoDXQP07R9Dl5y6Ko54QGm0FZDhMQ6HfR0rCRJBtX30XvhJc4q3sK1DN4v0vyDL589ZdaVj9T83OgL9caaKb3OuCWGPrVOpjmjy/TkQICfQK1+EdQoIEegv4GffulnICqcakAAAAASUVORK5CYII=" alt="QR">
+    <p class="wcap">the flock also fits in your pocket — move to gather, hold to scatter</p>
+    <div class="wurl">ooakosimo.neocities.org/dusk</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+  <div class="wcard">
+    <h1>TAKE THE CONTROLS</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACc0lEQVR4nO2bTYrjMBBGX7UEXsqQA+Qoyg3mSM0caW5gHyUHaLCXAZlvFpLd6VkM3QOZCLpqYRz5LT4oSvUjxcQnbX75LAmOOuroC6zW7AKYjZvta5H9U+xEq6MESZKAzQAwG4PIC5AlSctjBTj6JbRFzzqIvASRVdDPc6FG2eXhAhz9B7RtgsxmVmPrPwtw9Euofp4L0hLEbPEJAhz9i1WH3JXx+TrISAXycgKSgPVxAhz9IrrVug8IsgtAvkbq22xmZuNjBTj6WdOdLUHUEvH97bDp6VodfYF1b6sudf/bzC7pZppS4b0R60PrN0eRVJAW0JQKmtLRYFVroeax1Qe6DmIeg+z12orAvTsOglRojx60OgpAKmg6VvNC+5mXzZjHxwtw9BMWIRUMYjFSiUbaouBmIpVa2lvtk5+u1dFaZbSURdgbr3XQPtUdpGn1qW4X6F5lSDVR7dthUP0wQRvtepXxfPRjOViqZ5p7CLsHk3urCzRSsxWD2mM9Fc3jWxRpQXDb57tP1+poq+BJpe6JzOebka+D9iPJQeB5qw/0bqpr+depCDYMMLK2CGnB+61e0HY60gqMdmLchhccKcvzVh/ocYS1GaQ3EwjL083aGrEYxNKBVkc/zuDZL2KoUOOtTQx9TtgFyt0EN0uCpNp0vW+M3m/1gkYgFACMdQTWWCwvp2J5OSHWUJjHpQetjta8ZYfLBKD5fDOxbgYEPG/1gn68KBMK848Fy9d4eLDdMexAq6N/onYBmM8FTfXCRsT7rb7QWgSSbqZpjXc92P3BVydavzt63HlaI8DWbn+2AAuy16Ubrd8bNf9HkKOOPgT9DU16hx2kuoS7AAAAAElFTkSuQmCC" alt="QR">
+    <p class="wcap">scan · name yourself · your phone is the pilot seat</p>
+    <div class="wurl">ooakosimo.neocities.org/console</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+  <div class="wcard">
+    <h1>CHONK :: PARADE</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACT0lEQVR4nO2bTYrkMAxGn8qBXibQB6ijJDebqyVHqRvEy4DDNwvb9TMNQ3VDiKHlhbErb/GBkCzJLhNvjuXyLgmOOuroBaKVMbGbTbHDbNjNbID6qWtE6y9HOyAkAAxAyzXvELFLjDNA/DxMgKPfRov3EMS4gnTrINstmtl0uABHf4DuxjKA2VWy6QQBjv53dC+7IBtvBsQufUkWT9fqaEYlJSB2sAyguU+YDQC9pPlwAY6+N6S1Lsc16N+pjCDNp2t1tIP+EfMSggSwm5Yh8BwOT9fq6KXGv91sipYnzb0E/ZaTjoa0/nK0HFnjGsrxNK5BUp6AUYm89Uh4PookCShnVDVUEPSJOsmt1Q6qud8s22i5blYKY4IYbx96QY8R4Oh7owY86eFHpaGRPyQ0e07YBkqJepRzS1Iq00zQ03BrnY9mFyqpRrYRFN9S8TK83moErVlGLz1nh31ZQZ/Q7FlGG2j1rTWIUcVk9bdiS7dWK2g9ox4uBLUHpZLBe73VCvpcYI3VwbKhSkyUPCdsBe1q3r6ZYDMtVq6SWYaAjbcuHSrA0R/4VnYm7j2o5/Z7PtDct85HeS6pVnKVVczDvQflkbAN9OV+S6Xf9JwnPg6v07U6eoHasoD4kUstmwgqt8jsZn9u/kKtCTS/y7D8TK3fTPlJRtxN4zoYEBLLEFrQ6ujLK5r4KcurXrBMIRnsBv16mABHf4o+LrRisWJpxHskbAO9Z/B6KYx1v9/yLKMhtCPHOgDigCDI8ioOpuW6mY4U4Og3UPN/BDnq6CHoXzI62athg5xqAAAAAElFTkSuQmCC" alt="QR">
+    <p class="wcap">steer the procession — flash your name across the wall</p>
+    <div class="wurl">ooakosimo.neocities.org/parade</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+  <div class="wcard">
+    <h1>COMMUTE :: DECK</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACUUlEQVR4nO2bQYrjMBBFX7UMWdqQA/RRlJsNc6S5gXWUPsCAvGyQ+bOQ7LgbBtINngimtAiJ9BYfilL9KjsmHlzp5VESHHXU0RdYrK0bq5nZgN3q3sB2NHSi1VGCJKldiVEF0hREzECUJOVzBTj6JbRlz3IRyYZ6op+vhZp5t9MFOPpddDWi3q3m1jMEOPowGiV9yrJ/K8DRv68akLuNV7JQSFOAmK/AKGA5T4CjX0TX6vsAsB8ZiBnsBpDMzGw6V4CjD66hZQ/QUghQmgKkKXDsnZ+u1VGkHA7mvbr1qILm8e7qJc1P1+oordUaC5oJgnFvsOoKknLwaPWAtmi1TrgANaOCiHkPnudWH2i9CaUMmoEao5hbRt3vRI9WByiSSkurFplS97acKl63ukG3BniZUJp+A8sALFcZhGIQBMu1dKDV0TrVhbFgt+XSvtkEkt5NM6vZbSy9aP2/0WPd0lay2tW3WQ2vW72gLVrzWDiYwHncvIXXrZ7QAVgNuIj0+m5iMRTfLoLFAILM61Yn6ACEYvHXZDC2TQOMqHWAMQNet/pA95tQ9YOY9z2OB34TdoByb4KBsHmL+pO61w6ertXRvQnepoPx3hNvZhGPVicohwlum8EHaQY2B497wm7Q6jIAMJarLM4Fi/laLOYrYgmFNOUetDpaJ0+2h4xkoah5+dWAgMHgDr4HdPi8EefViG/DHsHVThXg6LfR1eqbTum1UEeE9UVD77d6QqsJpI6fPkwM20PlswU4+tg6esIM9/AcO2b3hH2g5v8IctTRU9A/z5S1zxtXeDwAAAAASUVORK5CYII=" alt="QR">
+    <p class="wcap">serene ↔ chaos — the daily commute's real question, in your hand</p>
+    <div class="wurl">ooakosimo.neocities.org/commute</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+  <div class="wcard">
+    <h1>KEEP IN TOUCH</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAFyAQAAAADAX2ykAAAC4ElEQVR4nO2cQYrsNhCGv4q8l2EOMEexbxZypNzAPkoOEJCXAzZ/FirZ/XiQ4RGPGYXSQnS3v0VBUaWqv6w28Str/e2XcAg++OC/lN/M18xhZjbUJzY3pj0fnrEn+Jv5JEkSbANSOczmzUzLZmYzwCRJKk/ZE/zd/BW1rCNoAczGJP0xQg3x+UF7gv8aPgmyxPouack7sA3/wn+1PcH/V/4H7+UPA4YdAJvKMWgqb4/aE/y9fPVva5KSDA7T9JcB29ioLGB7wp7g7+ePWh7XXDyVJJtJApJsBljNzGx8yp7g7+MHD04AtsO0vu8IfIO88yqBfDf7g/9kSaX1R1NJrQ3KO94zAUzagSxp+W72B//JcocCWrI7uRbR51aRSeHf/vgav0ySmORR2zwNV2BH/HbJvzhUC83TVdMqqeZnLRDx2yd/5ufkYToVqBucn2qSTuHf7vhWRrVjtqpWNTUXaIfwjhbCv73yWrYBm7O84SVLZu97HTc4mvfH7An+Lt7P33oIQw1Tr6WyJNWaa6/CR8Rvb7z3vwvwUj9Lu7dL4D6P87dLHo/QKnKcYVoP3LMnjvjtlR98jJB3bPrzTQZg5Ko/10mS1vHvp+wJ/l7e43fB29zWDu/t6dkzEfVzh/ypX7nC/OpL8E5pgeiP+uR9vr+ORcDRxknbGzaVEdZ3AaTdJj1hT/D38mf97NJkq5rbJOmUs1zC/G72B//Jcpn5angLtHFDK52B0J/75AfgMDw1g5H3QetY0Gpp11rVq9S8/N3sD/6T9aJf6Zrvt/dz2m8+fYj47ZC/7i/kD2MdLznrw1jH8yZD6M8d8gNn8q2ZeBLYJJDX1CC2w1jH8oA9wd/Lt/rqGu23SstfwiqNi/q5R/4n/9atXPNfH/3G+ft/4X3gazNXuQV+E6kD+4N/WT/eXwAgiXVMO+uYMHLxmUPoV73y1/0Fs/r1d32Yp+ZtqO/sRPx2yVv8P0PwwXfL/wOAHUj4QqQDegAAAABJRU5ErkJggg==" alt="QR">
+    <p class="wcap">field notes from the balcony — say hi, take a gumamela</p>
+    <div class="wurl">ooakosimo.neocities.org/docs/hi.html</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+  <div class="wcard">
+    <h1>OOAKOSIMO :: LAUNCHER</h1>
+    <img class="wqr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACUElEQVR4nO2bQW7kIBBFX8VIWWKpD5Cj0DeYs84NzI3MMhLozwLseLLqWWQaqYtFy8Zv8aXSp6qANvHgyG+PkuCoo46+QbEx7iUAJQA0sztwfAqTaHWURZIkiJ9m91iB8i7yCiRJ0j6NVkdhuIdFUMzIa7MBFOsum0aro2OUAPlDsjuLSPt/F+Dov6DNtBUz0g7aniDA0QdQSRX6SgiQPyo9bxGlEbdJtL4yyighANK+6PvPGIu0PV2rowHiGZPSDGIF4qcprwvX3vnpWh1F2hdJh4+0xXp++Atxb82BNutm6iEr75JUsXtUj6DZOo3W10a7hbqPRrYCiPViOvfWLOilHBylX6yjeE/7mNPmVcYcaI/Wt2w15vpXSVuUR2sG9FgEe8iO3qqviaon5d6aAg0Qa4CyYmBA3Bm1PEDaWiD9vs2g1dEjb0XpsqGRvnJZ95t7awp05KizJhxdVqxnBvO8NQ8aoNxGY5zXBUvbeIMorD+WUCfQ6mg4tppqsJ6yaIHzSZRbtbR73poCva51Z598zWC96fK8NQV63cs4T0d6+3WeRvpexizosQcfBT09AUYE8rpUKLej63q6VkffrneeaGb3o2QHYMz9rABHHx0BWE5H1SBKqJb2XmAgylLJ6zKDVkc7Ou48lXfZnWMbI6/NzNZmo1meROsro+H6Ej9N+aMGZQNLamGcHZeb91szoOH7RNobBku13D3WAuAr4UTo0WAd58RpbzZu0ZSA33maBQ3A173clX6pmgKiNFP+VY+tjadrddT8H0GOOvoj6B80LI9e9ImGIQAAAABJRU5ErkJggg==" alt="QR">
+    <p class="wcap">every door in the house — instruments, consoles, papers</p>
+    <div class="wurl">ooakosimo.neocities.org</div>
+    <div class="wfoot">✿ ooakosimo</div>
+  </div>
+</div></body></html>

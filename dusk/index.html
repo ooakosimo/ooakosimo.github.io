@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>PAPER DUSK :: gentle panic, slow dance</title>
+  <link rel="icon" href="/gumamela.gif">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #1a1430;
+           touch-action: none; -webkit-user-select: none; user-select: none; }
+    canvas { display: block; }
+    #hint {
+      position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 16px;
+      color: rgba(255,255,255,0.45);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px; letter-spacing: 0.08em;
+      pointer-events: none;
+      transition: opacity 3s ease;
+    }
+    /* ---- TV edition: mouse-first UI ---- */
+    body.idle { cursor: none; }
+    #ui {
+      position: absolute; top: 16px; right: 16px;
+      opacity: 0; transition: opacity 1.2s ease;
+      pointer-events: none;
+    }
+    body:not(.idle) #ui { opacity: 1; pointer-events: auto; }
+    .uibtn {
+      width: 58px; height: 58px; border-radius: 14px;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      background: rgba(20,15,40,0.55); color: rgba(255,255,255,0.85);
+      font-size: 26px; line-height: 1;
+      font-family: 'Courier New', Courier, monospace;
+      cursor: pointer;
+    }
+    .uibtn:hover, .uibtn:focus { background: rgba(255,255,255,0.18); }
+  </style>
+</head>
+<body>
+  <div id="hint">leave it alone and it dances. move to gather. hold to scatter.</div>
+  <div id="ui">
+    <button class="uibtn" id="fsbtn" title="fullscreen (or press F)">&#x26F6;</button>
+  </div>
+  <script>
+    /**
+     * PAPER DUSK :: gentle panic, slow dance  (v2)
+     *
+     * Origami Fleet x Flock Protocol, plus:
+     *  - clouds in three depth layers (sloooow / slow / fast) as the
+     *    eye's anchor — the only things moving on rails
+     *  - a sparse handful of fireflies: throbbing embers on their own
+     *    sine rhythms, flaring when a panic ripple passes through them
+     *  - responsive counts + capped pixel density for phones/tablets
+     *
+     * Untouched, the flock follows an invisible wandering current and
+     * occasionally spooks itself. The sky crossfades through four dusk
+     * palettes over minutes. Move to gather, hold to scatter.
+     */
+
+    // ---------- PALETTES ----------
+    const PALETTES = [
+      { sky: ['#3b2d5e', '#a5697d'], paper: ['#f4e8d8', '#eed2c0', '#e2bfb4'], accent: '#f2c9a0' }, // dusk plum
+      { sky: ['#12303f', '#40736d'], paper: ['#e9f2ea', '#d5e7dc', '#bcd8cd'], accent: '#a9e2c9' }, // sea glass
+      { sky: ['#42506f', '#d9a86e'], paper: ['#fdf3e0', '#f3ddb8', '#e8c8a0'], accent: '#ffe1a8' }, // amber dawn
+      { sky: ['#191430', '#4c2c56'], paper: ['#ece6f7', '#d8cdee', '#c2b3df'], accent: '#b79ff0' }  // violet night
+    ];
+    const HOLD_MS = 42000, FADE_MS = 18000;
+    const CYCLE_MS = HOLD_MS + FADE_MS;
+
+    // ---------- STATE ----------
+    let fleet = [], clouds = [], fireflies = [];
+    let bg;                       // tiny gradient buffer, stretched to screen
+    let cur = {};
+    let pointerActiveUntil = 0;
+    const POINTER_IDLE_MS = 6000;
+    let panic = null, nextPanicAt = 0;
+    let reduceMotion = false, speedScale = 1;
+
+    function areaScale() {
+      return constrain((width * height) / (1440 * 900), 0.35, 1.2);
+    }
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      pixelDensity(constrain(displayDensity(), 1, 2)); // cap retina cost
+      bg = createGraphics(8, 240);                     // gradient is 1D anyway
+
+      reduceMotion = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      speedScale = reduceMotion ? 0.5 : 1;
+
+      populate();
+      scheduleNextPanic();
+      updatePalette();
+      renderGradient();
+      image(bg, 0, 0, width, height);
+
+      setTimeout(() => { document.getElementById('hint').style.opacity = 0; }, 14000);
+    }
+
+    function populate() {
+      const s = areaScale();
+      fleet = []; clouds = []; fireflies = [];
+
+      const nFleet = max(40, floor(84 * s));
+      for (let i = 0; i < nFleet; i++) {
+        const roll = i % 8;
+        if (roll < 2)      fleet.push(new PaperPlane(random(width), random(height)));
+        else if (roll < 7) fleet.push(new OrigamiCrane(random(width), random(height)));
+        else               fleet.push(new PaperScrap(random(width), random(height)));
+      }
+
+      // clouds: far (sloooow), mid (slow), near (fast)
+      const nClouds = max(6, floor(10 * s));
+      for (let i = 0; i < nClouds; i++) {
+        clouds.push(new Cloud(i % 3)); // even spread across layers
+      }
+      clouds.sort((a, b) => a.layer - b.layer); // draw far first
+
+      const nFlies = max(10, floor(22 * s));
+      for (let i = 0; i < nFlies; i++) fireflies.push(new Firefly());
+    }
+
+    function draw() {
+      updatePalette();
+      if (frameCount % 20 === 0) renderGradient();
+
+      // translucent veil of sky = trails dissolving into the gradient
+      push(); tint(255, 26); image(bg, 0, 0, width, height); pop();
+
+      // clouds — the anchor layer, behind everything
+      noStroke();
+      for (let c of clouds) { c.update(); c.display(); }
+
+      // attractor: pointer or autonomous wandering current
+      let target;
+      const pointerLive = millis() < pointerActiveUntil;
+      if (pointerLive) {
+        target = createVector(mouseX, mouseY);
+      } else {
+        const t = millis() * 0.00004;
+        target = createVector(
+          map(noise(t, 13.7), 0, 1, width * 0.12, width * 0.88),
+          map(noise(t, 71.3), 0, 1, height * 0.15, height * 0.85)
+        );
+      }
+
+      // gentle panic events (only when untouched)
+      if (!pointerLive && !panic && millis() > nextPanicAt) {
+        panic = {
+          x: random(width * 0.2, width * 0.8),
+          y: random(height * 0.2, height * 0.8),
+          start: millis(),
+          dur: random(2400, 3600),
+          radius: min(width, height) * random(0.32, 0.48)
+        };
+      }
+      if (panic) {
+        const age = millis() - panic.start;
+        if (age > panic.dur) { panic = null; scheduleNextPanic(); }
+        else drawPanicRipple(age);
+      }
+
+      const fleeing = pointerLive && mouseIsPressed;
+      for (let e of fleet) e.run(fleet, target, fleeing, panic);
+
+      // fireflies on top — sparse magic
+      for (let f of fireflies) { f.update(); f.display(); }
+    }
+
+    function scheduleNextPanic() { nextPanicAt = millis() + random(14000, 30000); }
+
+    function drawPanicRipple(age) {
+      const p = age / panic.dur;
+      const r = panic.radius * easeOut(p);
+      const a = 70 * (1 - p);
+      noFill();
+      const c = cur.accent;
+      stroke(red(c), green(c), blue(c), a);
+      strokeWeight(1.5 + 4 * (1 - p));
+      ellipse(panic.x, panic.y, r * 2, r * 2);
+      stroke(red(c), green(c), blue(c), a * 0.4);
+      strokeWeight(1);
+      ellipse(panic.x, panic.y, r * 2.5, r * 2.5);
+    }
+
+    function easeOut(t) { return 1 - pow(1 - t, 3); }
+
+    // ---------- palette engine ----------
+    function updatePalette() {
+      const t = millis() % (CYCLE_MS * PALETTES.length);
+      const idx = floor(t / CYCLE_MS);
+      const local = t % CYCLE_MS;
+      const mixAmt = local < HOLD_MS ? 0 : (local - HOLD_MS) / FADE_MS;
+      const a = PALETTES[idx], b = PALETTES[(idx + 1) % PALETTES.length];
+      cur.skyTop = lerpColor(color(a.sky[0]), color(b.sky[0]), mixAmt);
+      cur.skyBot = lerpColor(color(a.sky[1]), color(b.sky[1]), mixAmt);
+      cur.paper = [0, 1, 2].map(i =>
+        lerpColor(color(a.paper[i]), color(b.paper[i]), mixAmt));
+      cur.accent = lerpColor(color(a.accent), color(b.accent), mixAmt);
+    }
+
+    function renderGradient() {
+      for (let y = 0; y < bg.height; y++) {
+        bg.stroke(lerpColor(cur.skyTop, cur.skyBot, y / bg.height));
+        bg.line(0, y, bg.width, y);
+      }
+    }
+
+    // ---------- interaction ----------
+    function mouseMoved()   { pointerActiveUntil = millis() + POINTER_IDLE_MS; wake(); }
+    function mouseDragged() { pointerActiveUntil = millis() + POINTER_IDLE_MS; wake(); }
+    function touchMoved()   { pointerActiveUntil = millis() + POINTER_IDLE_MS; wake(); return false; }
+    function touchStarted() { pointerActiveUntil = millis() + POINTER_IDLE_MS; wake(); return false; }
+
+    // ---------- TV edition: mouse-first UI ----------
+    // The wired mouse is the instrument: cursor + button appear on movement,
+    // then the room goes idle again (cursor hidden, chrome fades — decay, not blink).
+    let idleTimer = null;
+    function wake() {
+      document.body.classList.remove('idle');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => document.body.classList.add('idle'), 6000);
+    }
+
+    function toggleFullscreen() {
+      const el = document.documentElement;
+      const fs = document.fullscreenElement || document.webkitFullscreenElement;
+      try {
+        if (!fs) {
+          (el.requestFullscreen || el.webkitRequestFullscreen ||
+           el.webkitEnterFullscreen || function () {}).call(el);
+        } else {
+          (document.exitFullscreen || document.webkitExitFullscreen ||
+           function () {}).call(document);
+        }
+      } catch (e) { /* old TV browsers: fail soft, stay windowed */ }
+    }
+    document.getElementById('fsbtn').addEventListener('click', function (e) {
+      e.stopPropagation(); toggleFullscreen(); wake();
+    });
+    // the I8 keypad works too: F toggles fullscreen
+    function keyPressed() { if (key === 'f' || key === 'F') toggleFullscreen(); }
+    wake();
+
+    // ---------- old-TV performance governor ----------
+    // 512MB Android TVs chug quietly; if the frame rate sags, thin the flock
+    // a little at a time until it breathes again. Nobody notices ten fewer cranes.
+    setInterval(function () {
+      const fps = frameRate();
+      if (fps > 0 && fps < 22 && fleet.length > 40) {
+        fleet.splice(0, floor(fleet.length * 0.1));
+        if (fireflies.length > 8) fireflies.splice(0, 2);
+      }
+    }, 5000);
+
+    // ---------- month-install self-heal ----------
+    // If the old browser throws something fatal mid-exhibition, reload and
+    // keep dancing rather than freeze until a human notices.
+    window.addEventListener('error', function () {
+      setTimeout(function () { location.reload(); }, 5000);
+    });
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      populate(); // re-balance counts for new screen (also fixes rotation)
+      image(bg, 0, 0, width, height);
+    }
+
+    // ---------- CLOUDS ----------
+    class Cloud {
+      constructor(layer) {
+        this.layer = layer; // 0 far, 1 mid, 2 near
+        const m = min(width, height);
+        const spec = [
+          { spd: [0.04, 0.12], size: [0.08, 0.13], op: [12, 20] },  // sloooow
+          { spd: [0.22, 0.45], size: [0.12, 0.19], op: [18, 28] },  // slow
+          { spd: [0.85, 1.60], size: [0.18, 0.28], op: [24, 36] }   // fast
+        ][layer];
+        this.speed = random(spec.spd[0], spec.spd[1]) * speedScale;
+        this.size = m * random(spec.size[0], spec.size[1]);
+        this.opacity = random(spec.op[0], spec.op[1]);
+        this.pos = createVector(random(width), random(height * 0.85));
+        this.bubbles = [];
+        const n = floor(random(3, 7));
+        for (let i = 0; i < n; i++) {
+          this.bubbles.push({
+            ox: random(-this.size / 2, this.size / 2),
+            oy: random(-this.size / 4, this.size / 4),
+            r: random(this.size * 0.6, this.size)
+          });
+        }
+      }
+      update() {
+        this.pos.x -= this.speed;
+        if (this.pos.x < -this.size * 2) {
+          this.pos.x = width + this.size * 2;
+          this.pos.y = random(height * 0.85);
+        }
+      }
+      display() {
+        // paper-white pulled slightly toward the sky so clouds sit IN it
+        const c = lerpColor(color(255), cur.skyBot, 0.22);
+        fill(red(c), green(c), blue(c), this.opacity);
+        push();
+        translate(this.pos.x, this.pos.y);
+        for (let b of this.bubbles) ellipse(b.ox, b.oy, b.r, b.r * 0.8);
+        pop();
+      }
+    }
+
+    // ---------- FIREFLIES ----------
+    class Firefly {
+      constructor() {
+        this.pos = createVector(random(width), random(height));
+        this.nx = random(1000); this.ny = random(2000);
+        this.r = random(1.5, 3) * constrain(min(width, height) / 800, 0.8, 1.4);
+        this.phase = random(TWO_PI);
+        this.throb = random(0.02, 0.05);
+        this.flare = 0; // panic flare, decays
+      }
+      update() {
+        // slow perlin drift, slight upward bias like embers
+        this.pos.x += map(noise(this.nx), 0, 1, -0.5, 0.5) * speedScale;
+        this.pos.y += (map(noise(this.ny), 0, 1, -0.5, 0.5) - 0.06) * speedScale;
+        this.nx += 0.008; this.ny += 0.008;
+        this.phase += this.throb;
+
+        // wrap
+        if (this.pos.x < -10) this.pos.x = width + 10;
+        if (this.pos.x > width + 10) this.pos.x = -10;
+        if (this.pos.y < -10) this.pos.y = height + 10;
+        if (this.pos.y > height + 10) this.pos.y = -10;
+
+        // flare when a panic ripple passes through
+        if (panic) {
+          const d = dist(this.pos.x, this.pos.y, panic.x, panic.y);
+          const ringR = panic.radius * easeOut((millis() - panic.start) / panic.dur);
+          if (abs(d - ringR) < 40) this.flare = 1;
+        }
+        this.flare *= 0.96;
+      }
+      display() {
+        const b = 0.3 + 0.7 * (0.5 + 0.5 * sin(this.phase)) + this.flare;
+        const glow = cur.accent;
+        const core = lerpColor(cur.accent, color(255), 0.7);
+        noStroke();
+        // layered halo — cheap glow, no shadowBlur (kills mobile perf)
+        fill(red(glow), green(glow), blue(glow), 14 * b);
+        ellipse(this.pos.x, this.pos.y, this.r * 8);
+        fill(red(glow), green(glow), blue(glow), 40 * b);
+        ellipse(this.pos.x, this.pos.y, this.r * 3.5);
+        fill(red(core), green(core), blue(core), min(255, 200 * b));
+        ellipse(this.pos.x, this.pos.y, this.r * 1.4);
+      }
+    }
+
+    // ---------- BASE ENTITY ----------
+    class PaperEntity {
+      constructor(x, y, type) {
+        this.pos = createVector(x, y);
+        this.vel = p5.Vector.random2D().mult(random(0.5, 1.5));
+        this.acc = createVector(0, 0);
+        this.type = type;
+        this.noiseT = random(1000);
+        this.tone = floor(random(3));
+        this.toneJitter = random(-14, 14);
+        this.flap = random(TWO_PI);
+      }
+
+      run(boids, target, fleeing, panicEvt) {
+        this.flock(boids, target, fleeing, panicEvt);
+        this.update(panicEvt);
+        this.display();
+      }
+
+      flock(boids, target, fleeing, panicEvt) {
+        const wob = map(noise(this.noiseT), 0, 1, -0.25, 0.25);
+        this.acc.add(wob * 0.4, wob);
+        this.noiseT += 0.015;
+
+        const sep = this.separate(boids).mult(this.wSep);
+        const ali = this.align(boids).mult(this.wAli);
+        const coh = this.cohesion(boids).mult(this.wCoh);
+        this.acc.add(sep).add(ali).add(coh);
+
+        if (fleeing) {
+          this.acc.add(this.seekPoint(target).mult(-2.6));
+        } else {
+          this.acc.add(this.seekPoint(target).mult(this.wSeek));
+        }
+
+        if (panicEvt) {
+          const d = dist(this.pos.x, this.pos.y, panicEvt.x, panicEvt.y);
+          if (d < panicEvt.radius) {
+            const p = (millis() - panicEvt.start) / panicEvt.dur;
+            const envelope = sin(constrain(p, 0, 1) * PI);
+            const proximity = 1 - d / panicEvt.radius;
+            const away = p5.Vector.sub(this.pos, createVector(panicEvt.x, panicEvt.y));
+            away.setMag(this.maxForce * 6 * envelope * proximity);
+            this.acc.add(away);
+          }
+        }
+      }
+
+      update(panicEvt) {
+        this.vel.add(this.acc);
+        const boost = panicEvt ? 1.4 : 1.0;
+        this.vel.limit(this.maxSpeed * boost * speedScale);
+        this.pos.add(this.vel);
+        this.acc.mult(0);
+        if (this.pos.x < -this.r * 2) this.pos.x = width + this.r;
+        if (this.pos.y < -this.r * 2) this.pos.y = height + this.r;
+        if (this.pos.x > width + this.r * 2) this.pos.x = -this.r;
+        if (this.pos.y > height + this.r * 2) this.pos.y = -this.r;
+      }
+
+      paperFill() {
+        const c = cur.paper[this.tone];
+        return color(
+          constrain(red(c) + this.toneJitter, 0, 255),
+          constrain(green(c) + this.toneJitter, 0, 255),
+          constrain(blue(c) + this.toneJitter, 0, 255), 235);
+      }
+      paperStroke() { return lerpColor(cur.paper[this.tone], cur.skyTop, 0.45); }
+
+      seekPoint(target) {
+        const desired = p5.Vector.sub(target, this.pos);
+        desired.setMag(this.maxSpeed);
+        return p5.Vector.sub(desired, this.vel).limit(this.maxForce);
+      }
+
+      separate(boids) {
+        const want = 26.0, steer = createVector(0, 0);
+        let count = 0;
+        for (let b of boids) {
+          const d = p5.Vector.dist(this.pos, b.pos);
+          if (d > 0 && d < want) {
+            const diff = p5.Vector.sub(this.pos, b.pos);
+            diff.normalize().div(d);
+            steer.add(diff); count++;
+          }
+        }
+        if (count > 0) steer.div(count);
+        if (steer.mag() > 0) steer.setMag(this.maxSpeed).sub(this.vel).limit(this.maxForce);
+        return steer;
+      }
+
+      align(boids) {
+        const nd = 55, sum = createVector(0, 0);
+        let count = 0;
+        for (let b of boids) {
+          const d = p5.Vector.dist(this.pos, b.pos);
+          if (d > 0 && d < nd) { sum.add(b.vel); count++; }
+        }
+        if (count === 0) return createVector(0, 0);
+        sum.div(count).setMag(this.maxSpeed);
+        return p5.Vector.sub(sum, this.vel).limit(this.maxForce);
+      }
+
+      cohesion(boids) {
+        const nd = 55, sum = createVector(0, 0);
+        let count = 0;
+        for (let b of boids) {
+          const d = p5.Vector.dist(this.pos, b.pos);
+          if (d > 0 && d < nd) { sum.add(b.pos); count++; }
+        }
+        if (count === 0) return createVector(0, 0);
+        sum.div(count);
+        return this.seekPoint(sum);
+      }
+    }
+
+    // ---------- SPECIES ----------
+    class OrigamiCrane extends PaperEntity {
+      constructor(x, y) {
+        super(x, y, 'crane');
+        this.r = 10; this.maxSpeed = 2.4; this.maxForce = 0.07;
+        this.wSep = 1.5; this.wAli = 1.2; this.wCoh = 1.0; this.wSeek = 0.9;
+      }
+      display() {
+        const theta = this.vel.heading() + PI / 2;
+        this.flap += 0.06;
+        const span = 1 + 0.12 * sin(this.flap);
+        fill(this.paperFill()); stroke(this.paperStroke()); strokeWeight(1.1);
+        push(); translate(this.pos.x, this.pos.y); rotate(theta);
+        beginShape();
+        vertex(0, -this.r * 1.8);
+        vertex(-this.r * 1.2 * span, -this.r * 0.4);
+        vertex(-this.r * 0.4, this.r * 0.6);
+        vertex(0, this.r * 1.2);
+        vertex(this.r * 0.4, this.r * 0.6);
+        vertex(this.r * 1.2 * span, -this.r * 0.4);
+        endShape(CLOSE);
+        pop();
+      }
+    }
+
+    class PaperPlane extends PaperEntity {
+      constructor(x, y) {
+        super(x, y, 'plane');
+        this.r = 13; this.maxSpeed = 3.0; this.maxForce = 0.1;
+        this.wSep = 2.0; this.wAli = 0.8; this.wCoh = 1.0; this.wSeek = 1.3;
+      }
+      display() {
+        const theta = this.vel.heading() + PI / 2;
+        fill(this.paperFill()); stroke(this.paperStroke()); strokeWeight(1);
+        push(); translate(this.pos.x, this.pos.y); rotate(theta);
+        beginShape();
+        vertex(0, -this.r * 1.5);
+        vertex(-this.r * 0.8, this.r * 0.6);
+        vertex(0, this.r * 0.2);
+        vertex(this.r * 0.8, this.r * 0.6);
+        endShape(CLOSE);
+        pop();
+      }
+    }
+
+    class PaperScrap extends PaperEntity {
+      constructor(x, y) {
+        super(x, y, 'scrap');
+        this.r = 5; this.maxSpeed = 3.4; this.maxForce = 0.12;
+        this.wSep = 1.8; this.wAli = 1.0; this.wCoh = 0.8; this.wSeek = 1.1;
+      }
+      display() {
+        const theta = this.vel.heading();
+        fill(this.paperFill()); stroke(this.paperStroke()); strokeWeight(0.8);
+        push(); translate(this.pos.x, this.pos.y); rotate(theta);
+        beginShape();
+        vertex(this.r * 2, 0);
+        vertex(-this.r, -this.r);
+        vertex(-this.r * 0.4, 0);
+        vertex(-this.r, this.r);
+        endShape(CLOSE);
+        pop();
+      }
+    }
+  </script>
+</body>
+</html>

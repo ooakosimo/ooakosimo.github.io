@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Into The Loop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #73b4d9;
+      font-family: sans-serif;
+    }
+    #canvas {
+      display: block;
+    }
+
+    /* Cloud Button Styling */
+    #enter-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      width: 200px;
+      height: 60px;
+      background: #f0f9ff;
+      border-radius: 30px;
+      border: none;
+      color: #0b6b9e;
+      font-size: 1.5rem;
+      font-family: serif;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+    #enter-button:hover {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+    #enter-button::before, #enter-button::after {
+      content: '';
+      position: absolute;
+      background: #f0f9ff;
+      border-radius: 50%;
+    }
+    #enter-button::before {
+      width: 80px;
+      height: 80px;
+      top: -40px;
+      left: 30px;
+    }
+    #enter-button::after {
+      width: 100px;
+      height: 100px;
+      top: -55px;
+      right: 20px;
+    }
+    #enter-button span {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* --- MODIFIED Text Container Styling --- */
+    #title-container {
+      position: absolute;
+      /* MOVED from top to bottom, above the slider */
+      bottom: 6rem; 
+      width: 100%;
+      z-index: 5;
+      display: none; /* Hidden by default */
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      text-align: center;
+    }
+    /* NEW style for the presenter line */
+    #presenter-line {
+      font-size: 0.8rem;
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      opacity: 0.8;
+      letter-spacing: 1px;
+    }
+    #title-banner {
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+      font-family: serif;
+      font-size: 2.5rem;
+      letter-spacing: 1px;
+    }
+    #subtitle {
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    /* Controls Styling */
+    #volume-control {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      z-index: 10;
+      display: none;
+    }
+    #mute-button {
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px solid #0b6b9e;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    #timeline-container {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        max-width: 500px;
+        z-index: 10;
+        display: none;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+    }
+    #play-pause-button {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    #timeline-scrubber {
+        width: 100%;
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        cursor: pointer;
+    }
+    #timeline-scrubber::-webkit-slider-runnable-track {
+        background: rgba(0, 0, 0, 0.3);
+        height: 5px;
+        border-radius: 5px;
+    }
+    #timeline-scrubber::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        margin-top: -5px;
+        background-color: #fff;
+        height: 15px;
+        width: 15px;
+        border-radius: 50%;
+        border: 2px solid #0b6b9e;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="title-container">
+    <p id="presenter-line">OoakosiMo 69th Chonkly Mint Presents:</p>
+    <div id="title-banner">Into The Loop</div>
+    <p id="subtitle">Reactive Audiovisualizer</p>
+  </div>
+
+  <button id="enter-button"><span>Enter the Loop</span></button>
+  
+  <div id="volume-control">
+    <button id="mute-button">🔈</button>
+  </div>
+  
+  <div id="timeline-container">
+    <button id="play-pause-button">▶️</button>
+    <input type="range" id="timeline-scrubber" value="0" step="1">
+  </div>
+
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let audioContext, analyser, source, dataArray, bufferLength, audio;
+    let isMuted = false;
+    
+    const timelineContainer = document.getElementById('timeline-container');
+    const playPauseButton = document.getElementById('play-pause-button');
+    const timelineScrubber = document.getElementById('timeline-scrubber');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+
+    let birds = [], clouds = [];
+    let bubbles = [], orbiters = [], critters = [];
+    const palette = ['#c75000', '#e67e22', '#ffcc80', '#7e5109'];
+    const names = ['cactus', 'fish', 'cloud', 'frog', 'banana', 'eyeball', 'camel', 'spamcan', 'trashcan'];
+
+    for (let i = 0; i < 10; i++) {
+        clouds.push({x:Math.random()*canvas.width,y:Math.random()*(canvas.height*0.4),size:50+Math.random()*50,speed:0.1+Math.random()*0.2,sway:0,swayPhase:Math.random()*Math.PI*2});
+    }
+    for (let i = 0; i < 5; i++) {
+        birds.push({x:Math.random()*canvas.width,y:Math.random()*(canvas.height*0.5),size:10+Math.random()*5,speed:0.5+Math.random()*1,wingPhase:Math.random()*Math.PI*2,wingSpeed:0});
+    }
+    for (let i = 0; i < 25; i++) {
+      bubbles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,radius:Math.random()*20+10,dx:(Math.random()-0.5)*0.5,dy:(Math.random()-0.5)*0.5,color:palette[Math.floor(Math.random()*palette.length)],phase:Math.random()*Math.PI*2,visible:true});
+    }
+    for (let i = 0; i < 8; i++) {
+      orbiters.push({angle:Math.random()*Math.PI*2,radius:100+Math.random()*50,speed:0.01+Math.random()*0.02,size:5+Math.random()*10,color:palette[Math.floor(Math.random()*palette.length)]});
+    }
+    for (let i = 0; i < 12; i++) {
+      critters.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,name:names[Math.floor(Math.random()*names.length)],size:20+Math.random()*20,color:palette[Math.floor(Math.random()*palette.length)],visible:true});
+    }
+
+    function drawCritter(ctx,critter){ctx.fillStyle=critter.color;ctx.strokeStyle='#7e5109';ctx.lineWidth=2;ctx.save();ctx.translate(critter.x,critter.y);switch(critter.name){case'cactus':ctx.fillRect(-critter.size*0.1,-critter.size*0.4,critter.size*0.2,critter.size*0.8);ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.2,critter.size*0.15);ctx.fillRect(critter.size*0.1,0,critter.size*0.2,critter.size*0.15);break;case'fish':ctx.beginPath();ctx.ellipse(0,0,critter.size*0.4,critter.size*0.25,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(critter.size*0.3,0);ctx.lineTo(critter.size*0.6,-critter.size*0.2);ctx.lineTo(critter.size*0.6,critter.size*0.2);ctx.closePath();ctx.fill();break;case'cloud':ctx.beginPath();ctx.arc(0,0,critter.size*0.25,0,Math.PI*2);ctx.arc(critter.size*0.2,critter.size*0.1,critter.size*0.2,0,Math.PI*2);ctx.arc(-critter.size*0.2,critter.size*0.1,critter.size*0.2,0,Math.PI*2);ctx.fill();break;case'frog':ctx.beginPath();ctx.arc(0,0,critter.size*0.3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-critter.size*0.15,-critter.size*0.2,critter.size*0.1,0,Math.PI*2);ctx.arc(critter.size*0.15,-critter.size*0.2,critter.size*0.1,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(-critter.size*0.15,-critter.size*0.2,critter.size*0.05,0,Math.PI*2);ctx.arc(critter.size*0.15,-critter.size*0.2,critter.size*0.05,0,Math.PI*2);ctx.fill();break;case'banana':ctx.beginPath();ctx.moveTo(-critter.size*0.4,critter.size*0.2);ctx.quadraticCurveTo(0,-critter.size*0.5,critter.size*0.4,critter.size*0.2);ctx.quadraticCurveTo(0,-critter.size*0.2,-critter.size*0.4,critter.size*0.2);ctx.fill();break;case'eyeball':ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,critter.size*0.4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=critter.color;ctx.beginPath();ctx.arc(0,0,critter.size*0.25,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(0,0,critter.size*0.1,0,Math.PI*2);ctx.fill();break;case'camel':ctx.fillRect(-critter.size*0.4,0,critter.size*0.8,critter.size*0.2);ctx.beginPath();ctx.arc(-critter.size*0.2,0,critter.size*0.15,Math.PI,0);ctx.arc(critter.size*0.1,0,critter.size*0.15,Math.PI,0);ctx.fill();ctx.beginPath();ctx.arc(-critter.size*0.4,-critter.size*0.1,critter.size*0.1,0,Math.PI*2);ctx.fill();break;case'spamcan':ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.6,critter.size*0.4);ctx.fillStyle='#bdc3c7';ctx.fillRect(-critter.size*0.3,-critter.size*0.2,critter.size*0.6,critter.size*0.05);break;case'trashcan':ctx.beginPath();ctx.moveTo(-critter.size*0.2,critter.size*0.3);ctx.lineTo(-critter.size*0.25,-critter.size*0.2);ctx.lineTo(critter.size*0.25,-critter.size*0.2);ctx.lineTo(critter.size*0.2,critter.size*0.3);ctx.closePath();ctx.fill();ctx.fillRect(-critter.size*0.3,-critter.size*0.3,critter.size*0.6,critter.size*0.1);break;}ctx.restore();}
+
+    function draw() {
+      requestAnimationFrame(draw);
+      
+      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      sky.addColorStop(0, '#73b4d9');
+      sky.addColorStop(1, '#a3d1e6');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (analyser) {
+        analyser.getByteFrequencyData(dataArray);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        const cloudSway=dataArray[15]/255;for(let c of clouds){c.x+=c.speed;if(c.x-c.size>canvas.width)c.x=-c.size;c.swayPhase+=0.01;c.sway=Math.sin(c.swayPhase)*10*cloudSway;ctx.fillStyle='rgba(255,255,255,0.7)';ctx.beginPath();ctx.arc(c.x,c.y+c.sway,c.size*0.5,0,Math.PI*2);ctx.arc(c.x+c.size*0.4,c.y+c.sway,c.size*0.4,0,Math.PI*2);ctx.arc(c.x-c.size*0.4,c.y+c.sway,c.size*0.3,0,Math.PI*2);ctx.fill()}
+        const wingBeat=dataArray[40]/255;for(let b of birds){b.x+=b.speed;if(b.x-b.size>canvas.width)b.x=-b.size;b.wingSpeed=0.3+(wingBeat*0.5);b.wingPhase+=b.wingSpeed;const wingY=Math.sin(b.wingPhase)*b.size*0.5;ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(b.x-b.size,b.y-wingY);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x+b.size,b.y-wingY);ctx.stroke()}
+        const loops=64;for(let i=0;i<loops;i++){const angle=(i/loops)*Math.PI*2;const radius=100+dataArray[10];const x=centerX+Math.cos(angle)*radius;const y=centerY+Math.sin(angle)*radius;const barHeight=dataArray[i]*0.5;ctx.beginPath();ctx.moveTo(centerX,centerY);ctx.lineTo(x,y);ctx.strokeStyle=`rgba(255,255,255,${barHeight/150})`;ctx.lineWidth=2;ctx.stroke()}
+        for(let b of bubbles){const soundInfluence=dataArray[5]/100;const energy=dataArray[30]/255;b.visible=energy>0.3;if(!b.visible)continue;b.phase+=0.02;b.x+=b.dx;b.y+=b.dy;const breathing=Math.sin(b.phase)*3*soundInfluence;const r=b.radius+breathing;ctx.beginPath();ctx.arc(b.x,b.y,r,0,Math.PI*2);ctx.fillStyle=b.color+'33';ctx.fill()}
+        for(let o of orbiters){o.angle+=o.speed;const x=centerX+Math.cos(o.angle)*o.radius;const y=centerY+Math.sin(o.angle)*o.radius;ctx.beginPath();ctx.arc(x,y,o.size,0,Math.PI*2);ctx.fillStyle=o.color+'aa';ctx.fill()}
+        for(let c of critters){const show=dataArray[10]>50;if(!show)continue;c.x+=c.dx;c.y+=c.dy;if(c.x<-50)c.x=canvas.width+50;if(c.x>canvas.width+50)c.x=-50;if(c.y<-50)c.y=canvas.height+50;if(c.y>canvas.height+50)c.y=-50;drawCritter(ctx,c)}
+        
+        if (audio && !isNaN(audio.duration)) {
+            timelineScrubber.value = audio.currentTime;
+        }
+      }
+    }
+
+    async function startAudio() {
+      if (audio) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audio = new Audio('https://cryptowave.neocities.org/IntoTheLoop.mp3');
+      audio.loop = true;
+      audio.crossOrigin = "anonymous";
+      source = audioContext.createMediaElementSource(audio);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 128;
+      bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+      audio.addEventListener('loadedmetadata', () => {
+        timelineScrubber.max = audio.duration;
+      });
+      playPauseButton.addEventListener('click', () => {
+        if(audio.paused){audio.play();playPauseButton.textContent='⏸️'}else{audio.pause();playPauseButton.textContent='▶️'}
+      });
+      timelineScrubber.addEventListener('input', () => {
+        audio.currentTime = timelineScrubber.value;
+      });
+      try {
+        await audio.play();
+        playPauseButton.textContent = '⏸️';
+      } catch (err) {
+        console.error("Audio playback failed:", err);
+      }
+      draw();
+    }
+
+    document.getElementById('enter-button').addEventListener('click', async () => {
+      if (!audioContext) {
+        await startAudio();
+      } else if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      document.getElementById('enter-button').style.display = 'none';
+      document.getElementById('volume-control').style.display = 'block';
+      timelineContainer.style.display = 'flex';
+      document.getElementById('title-container').style.display = 'flex'; 
+    });
+
+    document.getElementById('mute-button').addEventListener('click', () => {
+      isMuted = !isMuted;
+      audio.muted = isMuted;
+      document.getElementById('mute-button').textContent = isMuted ? '🔇' : '🔈';
+    });
+  </script>
+</body>
+</html>

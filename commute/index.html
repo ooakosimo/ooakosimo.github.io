@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>LIFE AS WE KEEP ON KEEPING ON :: deck edition :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+  body { margin:0; overflow:hidden; background:#000;
+    font-family:'Courier New', monospace; touch-action:none; }
+  #stage { position:fixed; left:0; top:0; width:100vw; height:100vh;
+    transform-origin:0 0; }
+  #hud { position:fixed; left:12px; bottom:10px; z-index:60; color:#00ff73;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    text-shadow:0 0 6px rgba(0,0,0,.8); pointer-events:none; line-height:1.7; }
+  #flash { position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; z-index:80; pointer-events:none; opacity:0; }
+  #flash span { font-weight:bold; font-size:11vw; color:#fff;
+    letter-spacing:.06em; display:inline-block; white-space:nowrap;
+    text-shadow:
+      -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000,
+      -5px 0 0 #000, 5px 0 0 #000, 0 -5px 0 #000, 0 5px 0 #000; }
+  #sound-hint { position:fixed; top:12px; left:50%; transform:translateX(-50%);
+    z-index:70; color:#00ff73; border:1px solid #00ff73; background:rgba(0,0,0,.7);
+    padding:7px 14px; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    cursor:pointer; transition:opacity .5s; }
+  /* settings panel */
+  #panel { position:fixed; right:10px; top:10px; z-index:90; width:250px;
+    background:rgba(0,0,0,.88); border:1px solid #00ff73; color:#9dffce;
+    font-size:12px; padding:12px; display:none; }
+  #panel.open { display:block; }
+  #panel .row { display:flex; align-items:center; gap:8px; margin:8px 0; }
+  #panel label { width:64px; text-transform:uppercase; font-size:10px;
+    letter-spacing:.1em; }
+  #panel input[type=range] { flex:1; accent-color:#00ff73; }
+  #panel .val { width:36px; text-align:right; font-size:10px; }
+  #panel .btns { display:flex; gap:8px; margin-top:10px; }
+  #panel button, #chaosBtn { pointer-events:auto; padding:8px 10px; background:#000;
+    color:#00ff73; border:1px solid #00ff73; font-family:inherit; font-weight:bold;
+    cursor:pointer; text-transform:uppercase; font-size:10px; letter-spacing:.1em; }
+  #chaosBtn { position:fixed; left:12px; top:12px; z-index:60; border-width:2px;
+    padding:10px 14px; font-size:12px; }
+  /* corner-pin */
+  .pin { position:fixed; width:34px; height:34px; margin:-17px 0 0 -17px;
+    border:2px solid #F5943F; border-radius:50%; background:rgba(245,148,63,.25);
+    z-index:100; cursor:grab; display:none; }
+  .pin.sel { background:rgba(245,148,63,.6); }
+  #menuBtn { position:fixed; right:12px; bottom:12px; z-index:95;
+    background:#000; color:#00ff73; border:2px solid #00ff73;
+    font-family:inherit; font-weight:bold; letter-spacing:.1em;
+    text-transform:uppercase; font-size:12px; padding:10px 14px;
+    cursor:pointer; }
+  #aboutOv { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:150;
+    display:none; align-items:center; justify-content:center; cursor:pointer; }
+  #aboutOv.open { display:flex; }
+  #aboutBox { max-width:640px; padding:24px; color:#eee8de; }
+  #aboutBox h2 { color:#00ff73; font-size:clamp(18px,4.5vw,30px);
+    letter-spacing:.1em; margin:0 0 14px; }
+  #aboutBox p { font-size:clamp(14px,2.6vw,18px); line-height:1.8; }
+  #aboutBox .close-hint { color:#00ff73; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; opacity:.8; }
+  body.pinmode .pin { display:block; }
+  #pinhint { position:fixed; bottom:10px; right:12px; z-index:100; color:#F5943F;
+    font-size:10px; letter-spacing:.12em; text-transform:uppercase; display:none; }
+  body.pinmode #pinhint { display:block; }
+</style>
+</head>
+<body>
+<!-- ═══════════════ EDITION ═══════════════
+     LIFE AS WE KEEP ON KEEPING ON :: deck edition
+     a playable essay about commuter trauma and algorithmic crowds
+     artist  : OOAKOSIMO (Mohini Ochangco)
+     edition : AP (artist proof)   owner : —
+     room    : commute             year  : 2026
+     license : individuals remix freely with credit;
+               commercial use requires permission.
+     ═══════════════════════════════════════ -->
+<div id="stage"><div id="flash"><span id="flashTxt"></span></div></div>
+
+<button id="chaosBtn">ACTIVATE CHAOS</button>
+<div id="sound-hint">tap anywhere for sound</div>
+<button id="menuBtn">☰ controls</button>
+
+<div id="aboutOv"><div id="aboutBox">
+  <h2>LIFE AS WE KEEP ON KEEPING ON</h2>
+  <p>a playable essay about commuter trauma and algorithmic crowds — a voxel
+  world of small runners crossing terrain that shifts between serenity and
+  static. you hold the switch between order and collapse; the crowd keeps
+  moving either way.</p>
+  <p class="close-hint">tap anywhere to close</p>
+</div></div>
+
+<div id="hud">
+  <div>LIFE AS WE KEEP ON KEEPING ON :: OOAKOSIMO</div>
+  <div id="hudline">chaos:0.00 · room:commute · S panel · P pin · F full · 0 hud</div>
+  <div id="hudpilot"></div>
+</div>
+
+<div id="panel">
+  <div style="letter-spacing:.14em; text-transform:uppercase; color:#00ff73;
+    margin-bottom:6px;">COMMUTE :: SETTINGS</div>
+  <div class="row"><label>chaos</label>
+    <input type="range" id="chaos" min="0" max="1" step="0.01" value="0">
+    <span class="val" id="chaosV">0.00</span></div>
+  <div class="row"><label>speed</label>
+    <input type="range" id="speed" min="0.3" max="3" step="0.05" value="1">
+    <span class="val" id="speedV">1.00</span></div>
+  <div class="row"><label>runners</label>
+    <input type="range" id="count" min="3" max="60" step="1" value="25">
+    <span class="val" id="countV">25</span></div>
+  <div class="row"><label>orbit</label>
+    <input type="range" id="orbit" min="0" max="3" step="0.05" value="0.5">
+    <span class="val" id="orbitV">0.50</span></div>
+  <div class="row"><label>volume</label>
+    <input type="range" id="vol" min="0" max="1" step="0.01" value="0.6">
+    <span class="val" id="volV">0.60</span></div>
+  <div class="btns">
+    <button id="resetMapBtn">reset mapping</button>
+    <button id="muteBtn">sound on/off</button>
+  </div>
+  <div class="btns">
+    <button id="fsBtn">fullscreen</button>
+    <button id="aboutBtn">about this piece</button>
+  </div>
+  <div style="margin-top:8px; font-size:10px; opacity:.75;">
+    room word: <b id="roomLbl">commute</b> — pilots joining that room in the
+    CONTROL ROOM fly this piece.</div>
+</div>
+
+<div class="pin" id="pin0"></div><div class="pin" id="pin1"></div>
+<div class="pin" id="pin2"></div><div class="pin" id="pin3"></div>
+<div id="pinhint">drag corners · arrows nudge (shift = big) · P to exit ·
+saved on this device</div>
+
+<script>
+"use strict";
+/* ================= CONFIG ================= */
+const EDITION = { no:"AP", owner:"—", room:"commute" };
+const CFG = { chaos:0, chaosTarget:0, speed:1, orbit:0.5, count:25,
+  hud:true, sound:false, vol:0.6 };
+
+let scene, camera, renderer, composer, controls, glitchPass;
+let river, staticTexture, people = [];
+let synth, audioReady = false;
+const COL = {
+  skyCalm: new THREE.Color(0x87ceeb), skyDark: new THREE.Color(0x151515),
+  riverCalm: new THREE.Color(0x0066ff), riverChaos: new THREE.Color(0xff00ff),
+  trailCalm: new THREE.Color(0x00ff73), trailChaos: new THREE.Color(0xff0000)
+};
+
+const GlitchShader = {
+  uniforms: { "tDiffuse": { value: null }, "amount": { value: 0.0 },
+    "time": { value: 0.0 } },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float amount; uniform float time;
+    varying vec2 vUv;
+    void main() {
+      vec2 uv = vUv;
+      if (amount > 0.01) {
+        uv.x += sin(uv.y * 10.0 + time) * amount * 0.05;
+        if (mod(time, 0.5) > 0.4) uv.y += amount * 0.02;
+      }
+      vec4 col = texture2D(tDiffuse, uv);
+      if (amount > 0.01 && mod(time, 0.2) > 0.1) col.r += 0.2 * amount * 2.5;
+      gl_FragColor = col;
+    }`
+};
+
+/* ================= AUDIO (starts only on gesture) ================= */
+function initAudio() {
+  synth = new Tone.PolySynth(Tone.Synth).toDestination();
+  synth.set({ volume: -40 + CFG.vol * 35, oscillator: { type: 'square' } });
+  new Tone.Loop(t => {
+    if (!CFG.sound) return;
+    const chaosNow = Math.random() < CFG.chaos;
+    const n = chaosNow ? ["C1","C2"] : ["C4","G4"];
+    synth.triggerAttackRelease(n[Math.floor(Math.random()*n.length)], "16n", t);
+  }, "8n").start(0);
+  Tone.Transport.start();
+}
+async function wakeAudio() {
+  if (audioReady) { CFG.sound = !CFG.sound; return; }
+  await Tone.start(); initAudio();
+  audioReady = true; CFG.sound = true;
+  const h = document.getElementById('sound-hint');
+  h.style.opacity = 0; setTimeout(()=>h.remove(), 600);
+}
+document.getElementById('sound-hint').addEventListener('click', wakeAudio);
+document.body.addEventListener('pointerdown', function once() {
+  if (!audioReady) wakeAudio();
+  document.body.removeEventListener('pointerdown', once);
+});
+
+/* ================= WORLD (starts immediately — install mode) ============ */
+function createStaticTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  canvas.getContext('2d');
+  staticTexture = new THREE.CanvasTexture(canvas);
+  staticTexture.wrapS = staticTexture.wrapT = THREE.RepeatWrapping;
+}
+
+function createRunner() {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1, 0.4),
+    new THREE.MeshLambertMaterial({ color: 0x111111 }));
+  group.add(body);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(40 * 3), 3));
+  const trail = new THREE.Line(trailGeo,
+    new THREE.LineBasicMaterial({ color: COL.trailCalm.clone() }));
+  scene.add(trail);
+  group.userData = { speed: Math.random()*0.1 + 0.05,
+    angle: Math.random()*Math.PI*2, step: Math.random()*10, trail: trail };
+  people.push(group); scene.add(group);
+}
+function removeRunner() {
+  const p = people.pop(); if (!p) return;
+  scene.remove(p.userData.trail); scene.remove(p);
+}
+function setCount(n) {
+  n = Math.max(3, Math.min(60, Math.round(n)));
+  while (people.length < n) createRunner();
+  while (people.length > n) removeRunner();
+  CFG.count = n;
+}
+
+function init3D() {
+  scene = new THREE.Scene();
+  scene.background = COL.skyCalm.clone();
+  camera = new THREE.PerspectiveCamera(60,
+    window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(35, 35, 35);
+
+  renderer = new THREE.WebGLRenderer({ antialias:false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('stage').appendChild(renderer.domElement);
+  renderer.domElement.addEventListener('webglcontextlost', e => {
+    e.preventDefault();               // the GPU gave up — heal by reloading
+    setTimeout(() => location.reload(), 1500);
+  });
+
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  glitchPass = new THREE.ShaderPass(GlitchShader);
+  composer.addPass(glitchPass);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = CFG.orbit;
+  let idleTimer = null;
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(()=>{ controls.autoRotate = true; }, 30000);
+  });
+
+  createStaticTexture();
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+  sun.position.set(10, 20, 10);
+  scene.add(sun, new THREE.AmbientLight(0x404040, 1.5));
+
+  const landGeo = new THREE.PlaneGeometry(100, 100, 50, 50);
+  const landMat = new THREE.MeshLambertMaterial({ color: 0x9aab89,
+    flatShading: true });
+  const pos = landGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    pos.setZ(i, (Math.sin(x*0.1) * Math.cos(y*0.1) * 3) + (Math.sin(x*0.05)*1.5));
+  }
+  landGeo.computeVertexNormals();
+  const land = new THREE.Mesh(landGeo, landMat);
+  land.rotation.x = -Math.PI/2;
+  scene.add(land);
+
+  for (let i = 0; i < 30; i++) {
+    const treeGroup = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x4d2d1e }));
+    const leaves = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2),
+      new THREE.MeshLambertMaterial({ color: 0x2d5a27 }));
+    trunk.position.y = 1; leaves.position.y = 3;
+    treeGroup.add(trunk, leaves);
+    treeGroup.position.set((Math.random()-0.5)*80, 0, (Math.random()-0.5)*80);
+    scene.add(treeGroup);
+  }
+
+  const riverGeo = new THREE.PlaneGeometry(15, 100);
+  river = new THREE.Mesh(riverGeo, new THREE.MeshPhongMaterial({
+    color: COL.riverCalm.clone(), transparent:true, opacity:0.7 }));
+  river.rotation.x = -Math.PI/2;
+  river.position.y = 0.5;
+  scene.add(river);
+
+  setCount(CFG.count);
+  animate();
+}
+
+const _sky = new THREE.Color(), _riv = new THREE.Color(), _tr = new THREE.Color();
+function animate() {
+  requestAnimationFrame(animate);
+  const time = performance.now() * 0.001;
+
+  // chaos eases toward its target so button jumps feel cinematic
+  CFG.chaos += (CFG.chaosTarget - CFG.chaos) * 0.04;
+  const c = CFG.chaos;
+  const mult = (0.2 + (3.0 - 0.2) * c) * CFG.speed;
+
+  river.position.z = (time * 2) % 10 - 5;
+
+  // background: color lerp below .5, live static above
+  if (c > 0.5) {
+    const ctx = staticTexture.image.getContext('2d');
+    const data = ctx.getImageData(0, 0, 128, 128);
+    for (let i = 0; i < data.data.length; i += 4) {
+      const v = Math.random() * 255 * Math.min(1, (c - 0.4) * 2);
+      data.data[i] = data.data[i+1] = data.data[i+2] = v;
+      data.data[i+3] = 255;
+    }
+    ctx.putImageData(data, 0, 0);
+    staticTexture.needsUpdate = true;
+    scene.background = staticTexture;
+  } else {
+    _sky.lerpColors(COL.skyCalm, COL.skyDark, c * 2);
+    scene.background = _sky;
+  }
+
+  _riv.lerpColors(COL.riverCalm, COL.riverChaos, c);
+  river.material.color.copy(_riv);
+  _tr.lerpColors(COL.trailCalm, COL.trailChaos, c);
+
+  glitchPass.uniforms.amount.value = 0.4 * c;
+  glitchPass.uniforms.time.value = time;
+
+  people.forEach(p => {
+    p.position.x += Math.cos(p.userData.angle) * p.userData.speed * mult;
+    p.position.z += Math.sin(p.userData.angle) * p.userData.speed * mult;
+    p.userData.step += 0.1 * mult;
+    const groundY = Math.sin(p.position.x*0.1) * Math.cos(p.position.z*0.1) * 3;
+    p.position.y = groundY + 1.2 + Math.abs(Math.sin(p.userData.step)) * 0.6;
+    p.userData.trail.material.color.copy(_tr);
+
+    const positions = p.userData.trail.geometry.attributes.position.array;
+    for (let i = positions.length - 3; i > 0; i -= 3) {
+      positions[i] = positions[i-3];
+      positions[i+1] = positions[i-2];
+      positions[i+2] = positions[i-1];
+    }
+    positions[0] = p.position.x;
+    positions[1] = p.position.y;
+    positions[2] = p.position.z;
+    p.userData.trail.geometry.attributes.position.needsUpdate = true;
+
+    if (Math.abs(p.position.x) > 50 || Math.abs(p.position.z) > 50)
+      p.position.set(0, 2, 0);
+  });
+
+  controls.autoRotateSpeed = CFG.orbit;
+  controls.update();
+  composer.render();
+  hudRefresh();
+}
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+function hudRefresh() {
+  if (!CFG.hud) return;
+  $('hudline').textContent = 'chaos:' + CFG.chaos.toFixed(2) +
+    ' · room:' + EDITION.room + ' · S panel · P pin · F full · 0 hud';
+}
+function chaosBtnRefresh() {
+  $('chaosBtn').innerText = CFG.chaosTarget > 0.5 ? "RESTORE ORDER"
+    : "ACTIVATE CHAOS";
+}
+$('chaosBtn').addEventListener('click', () => {
+  CFG.chaosTarget = CFG.chaosTarget > 0.5 ? 0 : 1;
+  $('chaos').value = CFG.chaosTarget;
+  $('chaosV').textContent = Number(CFG.chaosTarget).toFixed(2);
+  chaosBtnRefresh();
+});
+
+function bindRange(id, key, fmt) {
+  const el = $(id), lbl = $(id + 'V');
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    if (key === 'chaos') { CFG.chaosTarget = v; chaosBtnRefresh(); }
+    else if (key === 'count') setCount(v);
+    else CFG[key] = v;
+    lbl.textContent = fmt(v);
+  });
+}
+bindRange('chaos', 'chaos', v => v.toFixed(2));
+bindRange('speed', 'speed', v => v.toFixed(2));
+bindRange('count', 'count', v => String(Math.round(v)));
+bindRange('orbit', 'orbit', v => v.toFixed(2));
+$('muteBtn').addEventListener('click', wakeAudio);
+$('resetMapBtn').addEventListener('click', () => { mapReset(); });
+$('vol').addEventListener('input', () => {
+  CFG.vol = parseFloat($('vol').value);
+  $('volV').textContent = CFG.vol.toFixed(2);
+  if (synth) synth.volume.value = -40 + CFG.vol * 35;
+});
+$('menuBtn').addEventListener('click', () => $('panel').classList.toggle('open'));
+$('fsBtn').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+$('aboutBtn').addEventListener('click', () => $('aboutOv').classList.add('open'));
+$('aboutOv').addEventListener('click', () => $('aboutOv').classList.remove('open'));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 's' || e.key === 'S') $('panel').classList.toggle('open');
+  if (e.key === 'f' || e.key === 'F') {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }
+  if (e.key === '0') {
+    CFG.hud = !CFG.hud;
+    $('hud').style.display = CFG.hud ? 'block' : 'none';
+    $('chaosBtn').style.display = CFG.hud ? 'block' : 'none';
+  }
+  if (e.key === 'i' || e.key === 'I') $('aboutOv').classList.toggle('open');
+  if (e.key === 'p' || e.key === 'P') pinToggle();
+  if (document.body.classList.contains('pinmode') && selPin >= 0) {
+    const step = e.shiftKey ? 10 : 1;
+    if (e.key === 'ArrowLeft')  { corners[selPin].x -= step; mapApply(); }
+    if (e.key === 'ArrowRight') { corners[selPin].x += step; mapApply(); }
+    if (e.key === 'ArrowUp')    { corners[selPin].y -= step; mapApply(); }
+    if (e.key === 'ArrowDown')  { corners[selPin].y += step; mapApply(); }
+  }
+});
+
+/* ================= NAME FLASH ================= */
+let shoutT = -1, shoutLast = 0;
+const FLASH_LIFE = 10;            // seconds total — tune on the wall
+function flashName(name) {
+  $('flashTxt').textContent = name;
+  const fs = Math.min(11, Math.max(4, 150 / Math.max(4, name.length)));
+  $('flashTxt').style.fontSize = fs + 'vw';
+  $('hudpilot').textContent = 'pilot :: ' + name;
+  shoutT = 0; shoutLast = performance.now();
+  requestAnimationFrame(flashStep);
+}
+function flashStep() {
+  if (shoutT < 0) return;
+  const now = performance.now();
+  const dt = (now - shoutLast) / 1000; shoutLast = now;
+  shoutT += dt;
+  const el = $('flash'), p = shoutT / FLASH_LIFE;
+  if (p >= 1) { shoutT = -1; el.style.opacity = 0; return; }
+  const attack  = Math.min(p / 0.03, 1);      // ~0.3s rise
+  const decay   = Math.pow(1 - p, 1.6);       // long readable tail
+  const breathe = 0.85 + 0.15 * Math.sin(p * Math.PI * 6);
+  el.style.opacity = attack * decay * breathe;
+  const pulse = 1 + 0.02 * Math.sin(shoutT * 6);
+  $('flashTxt').style.transform = 'scale(' + ((1 + p * 0.22) * pulse) + ')';
+  $('flashTxt').style.filter = 'blur(' + (p * p * 8) + 'px)';   // melts only at the end
+  requestAnimationFrame(flashStep);
+}
+
+/* ================= CORNER-PIN MAPPING ================= */
+const MAPKEY = 'ooak_commute_map_v2';
+let corners = null, selPin = -1;
+function defaultCorners() {
+  return [ {x:0, y:0}, {x:innerWidth, y:0},
+           {x:innerWidth, y:innerHeight}, {x:0, y:innerHeight} ];
+}
+function validCorners(c) {
+  if (!Array.isArray(c) || c.length !== 4) return false;
+  for (const p of c) {
+    if (!p || !isFinite(p.x) || !isFinite(p.y)) return false;
+    if (p.x < -innerWidth  || p.x > innerWidth  * 2) return false;
+    if (p.y < -innerHeight || p.y > innerHeight * 2) return false;
+  }
+  const area = Math.abs(
+    (c[1].x - c[0].x) * (c[3].y - c[0].y) -
+    (c[3].x - c[0].x) * (c[1].y - c[0].y));
+  return area > 400; // collapsed / scrambled quads heal to default
+}
+function mapLoad() {
+  try {
+    const s = localStorage.getItem(MAPKEY);
+    const c = s ? JSON.parse(s) : null;
+    corners = validCorners(c) ? c : defaultCorners();
+  } catch(e) { corners = defaultCorners(); }
+}
+function mapSave() {
+  try { localStorage.setItem(MAPKEY, JSON.stringify(corners)); } catch(e){}
+}
+function mapReset() { corners = defaultCorners(); mapApply(); }
+
+// homography: unit square -> corners, applied as matrix3d
+function mapApply() {
+  const w = innerWidth, h = innerHeight, c = corners;
+  function adj(m) {
+    return [ m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+             m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+             m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3] ];
+  }
+  function mul(a, b) {
+    const r = [];
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      let s = 0;
+      for (let k = 0; k < 3; k++) s += a[3*i+k] * b[3*k+j];
+      r[3*i+j] = s;
+    }
+    return r;
+  }
+  function mulV(m, v) {
+    return [ m[0]*v[0] + m[1]*v[1] + m[2]*v[2],
+             m[3]*v[0] + m[4]*v[1] + m[5]*v[2],
+             m[6]*v[0] + m[7]*v[1] + m[8]*v[2] ];
+  }
+  function basis(p1, p2, p3, p4) {
+    const m = [ p1.x, p2.x, p3.x, p1.y, p2.y, p3.y, 1, 1, 1 ];
+    const v = mulV(adj(m), [p4.x, p4.y, 1]);
+    return mul(m, [ v[0],0,0, 0,v[1],0, 0,0,v[2] ]);
+  }
+  const s = basis({x:0,y:0}, {x:w,y:0}, {x:w,y:h}, {x:0,y:h});
+  const d = basis(c[0], c[1], c[2], c[3]);
+  let t = mul(d, adj(s));
+  // keep the projective scale positive — a negative w places the whole
+  // stage behind the eye and renders as pure black with zero errors
+  if (Math.abs(t[8]) > 1e-8) t = t.map(v => v / t[8]);
+  const m3d = [ t[0],t[3],0,t[6], t[1],t[4],0,t[7],
+                0,0,1,0, t[2],t[5],0,t[8] ];
+  if (m3d.every(isFinite))
+    $('stage').style.transform = 'matrix3d(' + m3d.join(',') + ')';
+  else
+    $('stage').style.transform = 'none';
+  for (let i = 0; i < 4; i++) {
+    const p = $('pin' + i);
+    p.style.left = c[i].x + 'px';
+    p.style.top = c[i].y + 'px';
+    p.classList.toggle('sel', i === selPin);
+  }
+  mapSave();
+}
+function pinToggle() {
+  document.body.classList.toggle('pinmode');
+  if (!document.body.classList.contains('pinmode')) selPin = -1;
+  mapApply();
+}
+let dragPin = -1;
+for (let i = 0; i < 4; i++) {
+  const p = $('pin' + i);
+  p.addEventListener('pointerdown', e => {
+    dragPin = i; selPin = i; p.setPointerCapture(e.pointerId); mapApply();
+  });
+  p.addEventListener('pointermove', e => {
+    if (dragPin !== i) return;
+    corners[i].x = e.clientX; corners[i].y = e.clientY; mapApply();
+  });
+  p.addEventListener('pointerup', () => { dragPin = -1; });
+}
+
+/* ================= REMOTE (CONTROL ROOM link) ================= */
+function initRemote() {
+  try {
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      reconnectPeriod: 4000 });
+    const topic = 'ooakosimo/parade/' + EDITION.room;
+    client.on('connect', () => client.subscribe(topic));
+    client.on('message', (t, msg) => {
+      let d; try { d = JSON.parse(msg.toString()); } catch(e) { return; }
+      const k = d.k, v = d.v;
+      if (typeof d.n === 'string' && d.n)
+        $('hudpilot').textContent = 'pilot :: ' + d.n.slice(0, 24);
+      if (k === 'chaos' && isFinite(v)) {
+        CFG.chaosTarget = Math.max(0, Math.min(1, Number(v)));
+        $('chaos').value = CFG.chaosTarget;
+        $('chaosV').textContent = CFG.chaosTarget.toFixed(2);
+        chaosBtnRefresh();
+      }
+      else if (k === 'speed' && isFinite(v))
+        CFG.speed = Math.max(0.3, Math.min(3, Number(v)));
+      else if (k === 'orbit' && isFinite(v))
+        CFG.orbit = Math.max(0, Math.min(3, Number(v)));
+      else if (k === 'count' && isFinite(v)) setCount(Number(v));
+      else if (k === 'corner' && d && isFinite(d.dx) && isFinite(d.dy)
+               && d.i >= 0 && d.i <= 3) {
+        corners[d.i].x += Number(d.dx);
+        corners[d.i].y += Number(d.dy);
+        mapApply();
+      }
+      else if (k === 'scalemap' && isFinite(v)) {
+        const cx = (corners[0].x+corners[1].x+corners[2].x+corners[3].x)/4;
+        const cy = (corners[0].y+corners[1].y+corners[2].y+corners[3].y)/4;
+        corners = corners.map(p => ({ x: cx + (p.x-cx)*Number(v),
+                                      y: cy + (p.y-cy)*Number(v) }));
+        mapApply();
+      }
+      else if (k === 'aw' && isFinite(v) && v > 0) { CFG._aw = Number(v); }
+      else if (k === 'ah' && isFinite(v) && v > 0) {
+        const ah = Number(v), aw = CFG._aw || 4;
+        const cx = (corners[0].x+corners[1].x+corners[2].x+corners[3].x)/4;
+        const cy = (corners[0].y+corners[1].y+corners[2].y+corners[3].y)/4;
+        const wNow = Math.max(60, Math.abs(corners[1].x - corners[0].x));
+        const hNew = wNow * (ah / aw);
+        corners = [ {x:cx-wNow/2, y:cy-hNew/2}, {x:cx+wNow/2, y:cy-hNew/2},
+                    {x:cx+wNow/2, y:cy+hNew/2}, {x:cx-wNow/2, y:cy+hNew/2} ];
+        mapApply();
+      }
+      else if (k === 'mapreset') mapReset();
+      else if (k === 'shout')
+        flashName(String(d.n || 'anon').slice(0, 24));
+      else if (k === 'flash' && typeof v === 'string')
+        flashName(String(v).slice(0, 24));
+      else if (k === 'name' && typeof v === 'string')
+        $('hudpilot').textContent = 'pilot :: ' + String(v).slice(0, 24);
+    });
+  } catch(e) { /* remote is a bonus layer; the piece runs without it */ }
+}
+
+/* ================= BOOT (no gesture needed for visuals) ================= */
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+});
+mapLoad();
+init3D();
+mapApply();
+initRemote();
+</script>
+</body>
+</html>

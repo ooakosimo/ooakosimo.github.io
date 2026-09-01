@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>COA :: print sheet :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<style>
+  /* Print on the CREAM 109gsm paper. Cut on the dashed line = two A5-ish
+     certificates. DO NOT laminate these — the wet signature stays touchable;
+     that ink is the one thing a copy can never reproduce.
+     QR slots look for qr-coa1.png / qr-coa2.png beside this file; missing
+     images show a paste-here frame. Fill the blanks by hand in ink. */
+  @page { size: A4; margin: 8mm; }
+  body { font-family: 'Courier New', ui-monospace, monospace; color:#111;
+    background:#fff; margin:0; }
+  body.red   { --acc:#b3231a; }
+  body.black { --acc:#111; }
+  #toolbar { position:fixed; right:12px; top:12px; }
+  #toolbar button { font-family:inherit; padding:8px 12px; cursor:pointer; }
+  @media print { #toolbar { display:none; } }
+  .coa { height:138mm; box-sizing:border-box; padding:8mm 10mm;
+    display:flex; flex-direction:column; page-break-inside:avoid; }
+  .cutline { border-top:1.5px dashed #999; margin:2mm 6mm; }
+  .band { border:2.5px solid var(--acc); padding:3mm 4mm; text-align:center;
+    margin-bottom:4mm; }
+  .band .small { font-size:11px; letter-spacing:.3em; text-transform:uppercase;
+    color:var(--acc); font-weight:bold; }
+  .band h2 { margin:1.5mm 0 0; font-size:19px; letter-spacing:.08em;
+    text-transform:uppercase; }
+  .cols { display:flex; gap:6mm; flex:1; }
+  .left { flex:1.25; }
+  .right { width:44mm; display:flex; flex-direction:column; align-items:center; }
+  .fact { font-size:12.5px; font-weight:bold; line-height:2.1;
+    letter-spacing:.04em; }
+  .fact b { color:var(--acc); text-transform:uppercase; font-size:10.5px;
+    letter-spacing:.14em; }
+  .epigraph { font-size:10.5px; font-style:italic; font-weight:bold;
+    text-align:center; margin:0 0 3mm; line-height:1.6; color:var(--acc); }
+  .vessel { font-size:9.5px; line-height:1.55; margin-top:2.5mm;
+    border-left:2.5px solid var(--acc); padding-left:3mm; }
+  .right img, .right .qrbox { width:40mm; height:40mm; object-fit:contain;
+    border:2px solid var(--acc); background:#fff; padding:1.5mm;
+    box-sizing:border-box; }
+  .right .qrbox { display:flex; align-items:center; justify-content:center;
+    font-size:9px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--acc); text-align:center; }
+  .right .url { font-size:9.5px; font-weight:bold; margin-top:2mm;
+    text-align:center; word-break:break-all; }
+  .right .roomnote { font-size:9px; margin-top:2mm; text-align:center;
+    line-height:1.5; }
+  .signrow { display:flex; gap:8mm; margin-top:11mm; align-items:flex-end; }
+  .signrow .slot { flex:1; border-top:1.5px solid #111; font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; padding-top:1.5mm;
+    text-align:center; font-weight:bold; }
+  .strap { margin-top:3mm; font-size:9px; letter-spacing:.16em;
+    text-transform:uppercase; border-top:2px solid var(--acc);
+    padding-top:1.5mm; text-align:center; font-weight:bold; }
+</style>
+</head>
+<body class="red">
+<div id="toolbar">
+  <button onclick="document.body.classList.toggle('black');
+    document.body.classList.toggle('red')">red / black ink</button>
+  <button onclick="window.print()">print</button>
+</div>
+
+<!-- ═══ CERTIFICATE ONE ═══ -->
+<div class="coa">
+  <div class="band">
+    <div class="small">certificate of authenticity</div>
+    <h2>CHONK PARADE :: MELT PROCESSION</h2>
+  </div>
+  <div class="epigraph">"A living system has no final frame. While it runs,
+    it is alive; while you keep its code, it cannot die."</div>
+  <div class="cols">
+    <div class="left">
+      <div class="fact">
+        <b>artist</b> &nbsp;OOAKOSIMO — Mohini Ochangco<br>
+        <b>edition</b> &nbsp;______ of ______<br>
+        <b>year</b> &nbsp;2026<br>
+        <b>medium</b> &nbsp;single-file HTML artwork on USB vessel<br>
+        <b>room word</b> &nbsp;__________________<br>
+        <b>license</b> &nbsp;yours to keep, copy &amp; share with credit —
+          commercial use asks the artist first
+      </div>
+      <div class="vessel">
+        This edition ships on a USB drive. Please treat the drive as a vessel,
+        not as the artwork. Flash memory is not archival — the artwork is the
+        code. Copy the files somewhere you actually keep things; the piece also
+        lives at its own address on the web, which you can visit, view the
+        source of, and save again at any time. If the drive dies, you have lost
+        a keepsake and nothing else. This is deliberate: the work was made to be
+        ownable the way a text is ownable — copyable, portable, outliving its
+        container.
+      </div>
+    </div>
+    <div class="right">
+      <img src="qr-coa1.png" alt="QR — this edition's certificate page"
+        onerror="this.outerHTML='&lt;div class=&quot;qrbox&quot;&gt;paste edition QR here&lt;/div&gt;'">
+      <div class="url">/coa/____________/</div>
+      <div class="roomnote">this code is your certificate page —<br>
+        and it carries your <b>room word</b>:<br>
+        type it in the control room to fly<br>your own edition.</div>
+    </div>
+  </div>
+  <div class="signrow">
+    <div class="slot">signed in ink</div>
+    <div class="slot">date</div>
+  </div>
+  <div class="strap">ooakosimo :: static html :: no build :: no platform :: yours</div>
+</div>
+
+<div class="cutline"></div>
+
+<!-- ═══ CERTIFICATE TWO ═══ -->
+<div class="coa">
+  <div class="band">
+    <div class="small">certificate of authenticity</div>
+    <h2>LIFE AS WE KEEP ON KEEPING ON</h2>
+  </div>
+  <div class="epigraph">"A living system has no final frame. While it runs,
+    it is alive; while you keep its code, it cannot die."</div>
+  <div class="cols">
+    <div class="left">
+      <div class="fact">
+        <b>artist</b> &nbsp;OOAKOSIMO — Mohini Ochangco<br>
+        <b>edition</b> &nbsp;______ of ______<br>
+        <b>year</b> &nbsp;2026<br>
+        <b>medium</b> &nbsp;single-file HTML artwork on USB vessel<br>
+        <b>room word</b> &nbsp;__________________<br>
+        <b>license</b> &nbsp;yours to keep, copy &amp; share with credit —
+          commercial use asks the artist first
+      </div>
+      <div class="vessel">
+        This edition ships on a USB drive. Please treat the drive as a vessel,
+        not as the artwork. Flash memory is not archival — the artwork is the
+        code. Copy the files somewhere you actually keep things; the piece also
+        lives at its own address on the web, which you can visit, view the
+        source of, and save again at any time. If the drive dies, you have lost
+        a keepsake and nothing else. This is deliberate: the work was made to be
+        ownable the way a text is ownable — copyable, portable, outliving its
+        container.
+      </div>
+    </div>
+    <div class="right">
+      <img src="qr-coa2.png" alt="QR — this edition's certificate page"
+        onerror="this.outerHTML='&lt;div class=&quot;qrbox&quot;&gt;paste edition QR here&lt;/div&gt;'">
+      <div class="url">/coa/____________/</div>
+      <div class="roomnote">this code is your certificate page —<br>
+        and it carries your <b>room word</b>:<br>
+        type it in the control room to fly<br>your own edition.</div>
+    </div>
+  </div>
+  <div class="signrow">
+    <div class="slot">signed in ink</div>
+    <div class="slot">date</div>
+  </div>
+  <div class="strap">ooakosimo :: static html :: no build :: no platform :: yours</div>
+</div>
+
+</body>
+</html>

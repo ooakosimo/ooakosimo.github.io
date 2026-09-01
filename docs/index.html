@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAPERS :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+<style>
+  :root{ --ink:#EEE8DE; --line:rgba(35,32,28,.35); --cyan:#155e8f;
+    --text:#26221c; --strong:#0f0d0a; --warm:#a34d00; }
+  html.dark{ --ink:#060a10; --line:rgba(80,150,220,.28); --cyan:#78dcff;
+    --text:rgba(190,215,235,.92); --strong:#EEE8DE; --warm:#F5943F; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--ink); color:var(--text);
+    font-family:'Courier New', ui-monospace, monospace; font-size:16px;
+    line-height:1.75; }
+  #bar{ position:sticky; top:0; background:var(--ink); border-bottom:1px solid var(--line);
+    padding:10px 16px; display:flex; gap:12px; align-items:center; z-index:5; }
+  #bar a, #bar button{ color:var(--cyan); background:none; border:1px solid var(--line);
+    font-family:inherit; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    padding:7px 12px; text-decoration:none; cursor:pointer; }
+  #bar .t{ margin-left:auto; font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; opacity:.7; }
+  #doc{ max-width:760px; margin:0 auto; padding:30px 20px 80px; }
+  #doc h1{ color:var(--strong); letter-spacing:.12em; text-transform:uppercase;
+    font-size:26px; border-bottom:2px solid var(--line); padding-bottom:10px; }
+  #doc h2{ color:var(--strong); letter-spacing:.1em; text-transform:uppercase;
+    font-size:19px; margin-top:38px; }
+  #doc h3{ color:var(--cyan); letter-spacing:.08em; font-size:16px; }
+  #doc a{ color:var(--cyan); }
+  #doc code{ background:rgba(21,94,143,.12); padding:1px 5px; }
+  #doc pre{ background:rgba(21,94,143,.1); border:1px solid var(--line);
+    padding:14px; overflow-x:auto; }
+  #doc blockquote{ border-left:3px solid var(--warm); margin-left:0;
+    padding-left:16px; opacity:.9; }
+  #doc table{ border-collapse:collapse; width:100%; }
+  #doc th, #doc td{ border:1px solid var(--line); padding:8px 10px; font-size:14px;
+    text-align:left; }
+  #doc hr{ border:none; border-top:1px dashed var(--line); margin:34px 0; }
+  .idx a{ display:block; border:1px solid var(--line); padding:16px;
+    margin:12px 0; text-decoration:none; color:var(--text); }
+  .idx a:hover{ border-color:var(--cyan); }
+  .idx b{ color:var(--strong); letter-spacing:.1em; text-transform:uppercase; }
+  .shelf{ margin:30px 0 8px; font-size:13px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--warm); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <a href="../">launcher</a>
+  <a href="./">papers</a>
+  <button id="themeBtn">dark / light</button>
+  <span class="t">ooakosimo :: papers</span>
+</div>
+<div id="doc">loading…</div>
+
+<script>
+"use strict";
+const doc = document.getElementById('doc');
+const f = new URLSearchParams(location.search).get('f');
+
+document.getElementById('themeBtn').addEventListener('click', ()=>{
+  document.documentElement.classList.toggle('dark');
+  try{ localStorage.setItem('ooak_docs_theme',
+    document.documentElement.classList.contains('dark')?'dark':'light'); }catch(e){}
+});
+try{ if (localStorage.getItem('ooak_docs_theme')==='dark')
+  document.documentElement.classList.add('dark'); }catch(e){}
+
+if (!f){
+  // no file requested: show the shelf
+  doc.innerHTML = '<h1>PAPERS</h1><div class="idx">'
+    + '<div class="shelf">read ::</div>'
+    + '<a href="?f=quickstart.md"><b>QUICKSTART</b><br>three steps for visitors, keys for computers, setup for curators</a>'
+    + '<a href="?f=flight-manual.md"><b>FLIGHT MANUAL</b><br>the whole system: controls, mapping, console, privacy, editions, lineage</a>'
+    + '<a href="?f=PAPER_DUSK_NOTES.md"><b>PAPER DUSK :: NOTES</b><br>gentle panic, slow dance — the lineage (boids, EDSA, MRT), the four-minute sky, the map</a>'
+    + '<a href="?f=OOAKOSIMO_MODEKA_KIT.md"><b>MODEKA KIT</b><br>gallery copy at every length, piece texts, tsismis (hehe jk;), the daily ritual</a>'
+    + '<a href="?f=OOAK_INSTALL_PROTOCOL.md"><b>INSTALLATION EDITION :: PROTOCOL</b><br>how a site install works — the setup questionnaire &amp; aftercare</a>'
+    + '<div class="shelf">print drawer ::</div>'
+    + '<a href="quickstart-print.html"><b>PRINT :: QUICKSTART SHEET</b><br>A4 placard — red/black ink toggle, live QR</a>'
+    + '<a href="qr-cards.html"><b>PRINT :: QR CARDS</b><br>UPGRADED WITH A TITO MODE BUTTON (The titas will forever be ate;) labeled cards sized for the laminator — play, artworks, keep in touch, certificates</a>'
+    + '<a href="qr-wall-cards-A4.html"><b>PRINT :: WALL QR CARDS</b><br>six laminate-ready wall cards — dusk, controls, parade, commute, keep in touch, launcher — QRs baked in</a>'
+    + '<a href="OOAK_COA_ZINE.html"><b>PRINT :: COA ZINE</b><br>signable certificate Zine per artwork — the ink is the authentication</a>'
+    + '<a href="OOAK_MINI_FOLDS.html"><b>PRINT :: MINI FOLDS</b><br>envelope-size COA + per-piece spec folds — fits the black envelopes, sealed with an eyeball</a>'
+    + '<a href="usb-reservation-cards-A4-v2.html"><b>PRINT :: RESERVATION CARDS</b><br>writable cardstock cards for the show desk — reserve tonight, made this week</a>'
+    + '</div><p style="opacity:.6;font-size:13px">to add a paper: upload a .md beside this file, link it here.</p>';
+} else if (!/^[a-z0-9._-]+\.md$/i.test(f)){
+  doc.innerHTML = '<h1>hmm</h1><p>that does not look like a paper.</p>';
+} else {
+  fetch(f).then(r => { if(!r.ok) throw 0; return r.text(); })
+    .then(md => {
+      doc.innerHTML = marked.parse(md);
+      document.title = (doc.querySelector('h1')?.textContent || 'PAPERS') + ' :: OOAKOSIMO';
+    })
+    .catch(()=>{
+      doc.innerHTML = '<h1>not found</h1><p>could not load <code>'+f+'</code>. '
+        + 'if you opened this from a local file, the reader needs to be hosted '
+        + '(neocities, github pages) for fetch to work — or just open the .md '
+        + 'in any text editor; it is honest markdown.</p>';
+    });
+}
+</script>
+</body>
+</html>

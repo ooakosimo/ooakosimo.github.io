@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QR CARDS :: print sheet :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<style>
+  /* Print on A4. Cards are 63×90mm — they fit the 2R (67×97mm) laminating
+     pouches with a margin. Toggle ink with the button (hidden when printing).
+     HOW TO USE: put this file in /docs/ next to your QR images. Card slots
+     look for: qr.png (console), qr-parade.png, qr-commute.png, qr-touch.png,
+     qr-coa1.png, qr-coa2.png. Missing images just show an empty frame —
+     print anyway and paste a cut-out QR in, DIY style. */
+  @page { size: A4; margin: 8mm; }
+  body { font-family: 'Courier New', ui-monospace, monospace; color:#111;
+    background:#fff; margin:0; }
+  body.red   { --acc:#b3231a; }
+  body.black { --acc:#111; }
+  #toolbar { position:fixed; right:12px; top:12px; }
+  #toolbar button { font-family:inherit; padding:8px 12px; cursor:pointer; }
+  @media print { #toolbar { display:none; } }
+  h1 { font-size:20px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--acc); margin:10px 0 2px; text-align:center; }
+  .note { text-align:center; font-size:11px; margin:0 0 8px;
+    letter-spacing:.06em; }
+  #sheet { display:flex; flex-wrap:wrap; gap:6mm; justify-content:center;
+    padding:4mm; }
+  .card { width:63mm; height:90mm; border:1.5px dashed #999;
+    display:flex; flex-direction:column; align-items:center;
+    padding:4mm 3mm; box-sizing:border-box; page-break-inside:avoid; }
+  .card h2 { font-size:14px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--acc); margin:0 0 1mm; text-align:center; }
+  .card .tag { font-size:10.5px; font-weight:bold; letter-spacing:.06em;
+    text-align:center; margin:0 0 2mm; line-height:1.55; }
+  .card img, .card .qrbox { width:42mm; height:42mm; object-fit:contain;
+    border:2px solid var(--acc); background:#fff; padding:1.5mm;
+    box-sizing:border-box; }
+  .card .qrbox { display:flex; align-items:center; justify-content:center;
+    font-size:9px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--acc); text-align:center; }
+  .card .url { font-size:9.5px; font-weight:bold; letter-spacing:.04em;
+    margin:2mm 0 0; text-align:center; word-break:break-all; }
+  .card .strap { margin-top:auto; font-size:8.5px; letter-spacing:.14em;
+    text-transform:uppercase; border-top:1.5px solid var(--acc);
+    padding-top:1.5mm; width:100%; text-align:center; }
+  /* TITO SIZE — bigger cards, fit the 3R (95×135mm) laminating pouches */
+  body.big .card { width:90mm; height:128mm; padding:6mm 4mm; }
+  body.big .card h2 { font-size:19px; }
+  body.big .card .tag { font-size:13.5px; }
+  body.big .card img, body.big .card .qrbox { width:62mm; height:62mm; }
+  body.big .card .url { font-size:13px; }
+  body.big .card .strap { font-size:11px; }
+</style>
+</head>
+<body class="red">
+<div id="toolbar">
+  <button onclick="document.body.classList.toggle('black');
+    document.body.classList.toggle('red')">red / black ink</button>
+  <button onclick="document.body.classList.toggle('big')">pocket / tito size</button>
+  <button onclick="window.print()">print</button>
+</div>
+
+<h1>QR CARDS</h1>
+<p class="note">cut on the dashed lines · laminate (2R pouches) · every code
+wears its name</p>
+
+<div id="sheet">
+
+  <div class="card">
+    <h2>▶ PLAY</h2>
+    <div class="tag">your phone becomes the remote.<br>
+      scan → pick the artwork in the dropdown →<br>
+      name yourself → TAKE THE CONTROLS</div>
+    <img src="qr.png" alt="QR — control room">
+    <div class="url">ooakosimo.neocities.org/console</div>
+    <div class="strap">ooakosimo :: control room</div>
+  </div>
+
+  <div class="card">
+    <h2>CHONK PARADE</h2>
+    <div class="tag">the melt procession — watch it live<br>
+      on your own screen. fly it with the ▶ PLAY card<br>
+      (pick "chonk parade").</div>
+    <img src="qr-parade.png" alt="QR — parade">
+    <div class="url">ooakosimo.neocities.org/parade</div>
+    <div class="strap">ooakosimo :: artwork one</div>
+  </div>
+
+  <div class="card">
+    <h2>COMMUTE DECK</h2>
+    <div class="tag">serene ↔ chaos, in your hand.<br>
+      drag to orbit · pinch to zoom. fly it with the<br>
+      ▶ PLAY card (pick "commute deck").</div>
+    <img src="qr-commute.png" alt="QR — commute">
+    <div class="url">ooakosimo.neocities.org/commute</div>
+    <div class="strap">ooakosimo :: artwork two</div>
+  </div>
+
+  <div class="card">
+    <h2>KEEP IN TOUCH</h2>
+    <div class="tag">the artist, one tap away —<br>
+      socials, archive, everything.</div>
+    <img src="qr-touch.png" alt="QR — keep in touch">
+    <div class="url">ooakosimo.neocities.org/touch</div>
+    <div class="strap">ooakosimo :: hello</div>
+  </div>
+
+  <div class="card">
+    <h2>CERTIFICATE</h2>
+    <div class="tag">edition authenticity —<br>
+      this code lives INSIDE the box.<br>
+      it carries your room word.</div>
+    <img src="qr-coa1.png" alt="QR — certificate 1">
+    <div class="url">(edition one)</div>
+    <div class="strap">ooakosimo :: coa</div>
+  </div>
+
+  <div class="card">
+    <h2>CERTIFICATE</h2>
+    <div class="tag">edition authenticity —<br>
+      this code lives INSIDE the box.<br>
+      it carries your room word.</div>
+    <img src="qr-coa2.png" alt="QR — certificate 2">
+    <div class="url">(edition two)</div>
+    <div class="strap">ooakosimo :: coa</div>
+  </div>
+
+  <div class="card">
+    <h2>________</h2>
+    <div class="tag">blank template —<br>write the name, paste any QR.</div>
+    <div class="qrbox">paste QR here</div>
+    <div class="url">____________________</div>
+    <div class="strap">ooakosimo</div>
+  </div>
+
+  <div class="card">
+    <h2>________</h2>
+    <div class="tag">blank template —<br>write the name, paste any QR.</div>
+    <div class="qrbox">paste QR here</div>
+    <div class="url">____________________</div>
+    <div class="strap">ooakosimo</div>
+  </div>
+
+</div>
+</body>
+</html>

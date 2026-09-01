@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OOAKOSIMO :: LAUNCHER</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<style>
+  :root{ --ink:#060a10; --line:rgba(80,150,220,.28); --cyan:#78dcff;
+    --hud:rgba(120,170,220,.8); --paper:#EEE8DE; --warm:#F5943F;
+    --card:rgba(12,16,22,.6); --cardHover:rgba(12,16,22,.95); }
+  html.light{ --ink:#EEE8DE; --line:rgba(35,32,28,.35); --cyan:#155e8f;
+    --hud:rgba(35,32,28,.85); --paper:#0f0d0a; --warm:#a34d00;
+    --card:rgba(255,255,255,.55); --cardHover:rgba(255,255,255,.95); }
+  #themeBtn{ background:none; border:1px solid var(--line); color:var(--cyan);
+    font-family:inherit; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; padding:6px 10px; cursor:pointer;
+    margin-bottom:18px; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--ink); color:var(--hud);
+    font-family:'Courier New', ui-monospace, monospace; }
+  #wrap{ max-width:900px; margin:0 auto; padding:34px 20px 60px; }
+  h1{ color:var(--paper); font-size:clamp(20px,4vw,34px); letter-spacing:.22em;
+    text-transform:uppercase; margin:0 0 4px; }
+  h1 .x{ color:var(--cyan); }
+  .tag{ color:var(--paper); font-size:15px; line-height:1.7; max-width:640px;
+    margin:0 0 10px; }
+  .sub{ font-size:13px; letter-spacing:.16em; text-transform:uppercase; margin-bottom:26px; }
+  #about{ margin-top:38px; border-top:1px dashed var(--line); padding-top:22px;
+    max-width:680px; font-size:14px; line-height:1.8; }
+  #about h2{ color:var(--paper); font-size:13px; letter-spacing:.18em;
+    text-transform:uppercase; margin:0 0 10px; }
+  #about b{ color:var(--paper); }
+  .grid{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  a.tile{ display:block; border:1px solid var(--line); padding:26px 20px;
+    text-decoration:none; color:var(--hud); background:var(--card); }
+  a.tile:hover, a.tile:focus{ border-color:var(--cyan); outline:none;
+    background:var(--cardHover); }
+  a.tile:focus{ box-shadow:0 0 0 3px var(--cyan); }   /* d-pad remotes see this */
+  .tile h2{ margin:0 0 6px; color:var(--paper); font-size:19px;
+    letter-spacing:.14em; text-transform:uppercase; }
+  .tile h2 .x{ color:var(--cyan); }
+  .tile p{ margin:0; font-size:13px; line-height:1.6; }
+  .tile.soon{ opacity:.45; }
+  .tile.soon h2 .x{ color:var(--warm); }
+  .thumb{ width:44px; height:44px; margin-bottom:10px; color:var(--cyan); }
+  .thumb svg{ width:100%; height:100%; }
+  .backroom{ margin-top:16px; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; opacity:.8; }
+  .backroom a{ color:var(--cyan); }
+  footer{ margin-top:34px; font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; opacity:.65; }
+  @media (max-width:640px){
+    .tag{ font-size:16px; }
+    .sub{ font-size:14px; }
+    a.tile p{ font-size:15px; }
+    #about{ font-size:15px; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>OOAKOSIMO <span class="x">::</span> LAUNCHER</h1>
+  <p class="tag">hand-coded instruments that stay alive only while the audience flies them — scan, name yourself, take the controls.</p>
+  <div class="sub">instruments, consoles, papers — pick a door</div>
+  <button id="themeBtn">dark / light</button>
+
+  <div class="grid">
+    <a class="tile" href="parade/">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="24" cy="11" r="6"/><line x1="24" y1="17" x2="24" y2="30"/><line x1="24" y1="30" x2="16" y2="42"/><line x1="24" y1="30" x2="32" y2="42"/><line x1="24" y1="22" x2="14" y2="27"/><line x1="24" y1="22" x2="34" y2="17"/></svg></div>
+      <h2>PARADE <span class="x">::</span> DECK</h2>
+      <p>the procession instrument — photo melt, mapping built in, obeys the control room</p>
+    </a>
+    <a class="tile" href="commute/">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="25" width="10" height="10"/><rect x="20" y="16" width="10" height="10"/><rect x="34" y="27" width="8" height="8"/><path d="M4 42 L44 42"/></svg></div>
+      <h2>COMMUTE <span class="x">::</span> DECK</h2>
+      <p>voxel punk playable essay — serene ↔ chaos, flyable from your phone</p>
+    </a>
+    <a class="tile" href="console/">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="9" y1="13" x2="39" y2="13"/><circle cx="30" cy="13" r="3.5"/><line x1="9" y1="24" x2="39" y2="24"/><circle cx="16" cy="24" r="3.5"/><line x1="9" y1="35" x2="39" y2="35"/><circle cx="24" cy="35" r="3.5"/></svg></div>
+      <h2>CONTROL <span class="x">::</span> ROOM</h2>
+      <p>your phone is the pilot seat — pick a piece, name yourself, fly it</p>
+    </a>
+<a class="tile" href="dusk/">
+  <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 8 L10 26 L24 22 L38 26 Z"/><circle cx="15" cy="38" r="1.6" fill="currentColor" stroke="none"/><circle cx="33" cy="35" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+  <h2>PAPER <span class="x">::</span> DUSK</h2>
+  <p>origami flock in four dusk palettes — move to gather, hold to scatter. mouse &amp; finger, no pilot seat needed</p>
+</a>
+    <a class="tile" href="docs/">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="12" y="7" width="24" height="34"/><line x1="17" y1="15" x2="31" y2="15"/><line x1="17" y1="21" x2="31" y2="21"/><line x1="17" y1="27" x2="27" y2="27"/></svg></div>
+      <h2>PAPERS <span class="x">::</span></h2>
+      <p>quickstart + flight manual — the papers, live and readable</p>
+    </a>
+    <a class="tile" href="keys/">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="10" y1="40" x2="10" y2="24"/><line x1="19" y1="40" x2="19" y2="12"/><line x1="28" y1="40" x2="28" y2="30"/><line x1="37" y1="40" x2="37" y2="18"/></svg></div>
+      <h2>KEYS <span class="x">::</span> DECK</h2>
+      <p>psycho noir speedramp — mic, music, or silent autonomous display mode</p>
+    </a>
+    <a class="tile" href="keys/remote.html">
+      <div class="thumb"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="14" y="5" width="20" height="38" rx="3"/><circle cx="24" cy="36" r="1.5" fill="currentColor" stroke="none"/><path d="M20 18 Q24 14 28 18"/><path d="M17 14 Q24 7 31 14"/><circle cx="24" cy="22" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+      <h2>KEYS <span class="x">::</span> REMOTE</h2>
+      <p>phone and tablet control — macros, triggers, presets, patch bay, silent auto</p>
+    </a>
+  </div>
+
+  <div class="backroom">back room :: <a href="archive/">SHADER ARCHIVE</a> —
+  live shaders running in-page. heavy — best on computers.</div>
+
+  <div id="about">
+    <h2>ABOUT ::</h2>
+    <p>Every work here is a single hand-coded HTML file — no app, no platform,
+    no build — projected into the room and then handed over: scan the QR, invent
+    a pilot name, and your phone takes the controls.</p>
+    <p><b>Life as we keep on keeping on</b> is a playable essay about commuter
+    trauma and algorithmic crowds: a voxel world of small runners crossing
+    terrain that shifts between serenity and static. Visitors hold the switch
+    between order and collapse — the daily commute's real question — and the
+    crowd keeps moving either way.</p>
+    <p><b>CHONK PARADE</b> is a procession of shadow creatures walking through
+    a slow photographic melt — decay as a medium, attention as a signal. Pilots
+    steer the procession from their phones and can flash their names briefly
+    across the wall: present for a moment, then surrendered to the melt, like
+    everything else.</p>
+    <p><b>PAPER DUSK</b> is an origami flock in four dusk palettes — cranes,
+planes, and scraps that spook themselves and settle again. Move to gather;
+hold to scatter. First installed on the smart TV beside the Modeka toilet
+door — the wall with the longest queue in the house.</p>
+    <p>The <b>SHADER ARCHIVE</b> keeps the artist's performance instruments
+    running live in the page — audio-reactive shaders written for VJ sets and
+    projection nights, each one playable here and free to carry off with
+    credit.</p>
+    <p>Together they make one argument the artist has been building for twenty
+    years across post-production, cryptoart, and code: <b>a system is only
+    alive while someone tends it.</b> The stream is the stage; the audience is
+    the foley artist. These artworks don't perform for you — they wait for
+    you.</p>
+    <p>The creatures descend from the artist's own shadow practice (2017; first
+    published as <i>shadow realm</i>, 2020), with a nod to Marko Zubak, a.k.a.
+    Mlibty, who blessed the derivations by name.</p>
+  </div>
+<div class="backroom">field notes from the balcony :: <a href="docs/hi.html">keep in touch</a></div>
+  <footer>static html :: no build :: no platform :: yours — ooakosimo</footer>
+  
+</div>
+<script>
+"use strict";
+document.getElementById('themeBtn').addEventListener('click', () => {
+  document.documentElement.classList.toggle('light');
+  try { localStorage.setItem('ooak_theme',
+    document.documentElement.classList.contains('light') ? 'light' : 'dark');
+  } catch(e) {}
+});
+try { if (localStorage.getItem('ooak_theme') === 'light')
+  document.documentElement.classList.add('light'); } catch(e) {}
+</script>
+</body>
+</html>

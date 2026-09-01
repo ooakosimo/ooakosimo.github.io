@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONTROL ROOM :: CHONK PARADE :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+  :root{ --ink:#060a10; --panel:rgba(12,16,22,.92); --line:rgba(80,150,220,.25);
+    --cyan:#78dcff; --hud:rgba(120,170,220,.85); --paper:#EEE8DE; --warm:#F5943F; }
+  html.light{ --ink:#EEE8DE; --panel:rgba(238,232,222,.9); --line:rgba(35,32,28,.4);
+    --cyan:#155e8f; --hud:#3a362f; --paper:#15130f; --warm:#a34d00; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:var(--ink); color:var(--hud);
+    font-family:'Courier New', ui-monospace, monospace; font-size:17px;
+    font-weight:700; }
+  html.light input[type=text], html.light select{ background:#f6f1e6; color:#15130f; }
+  button{ touch-action:manipulation; }
+  .pad{ height:180px; border:1px dashed var(--line); display:flex; align-items:center;
+    justify-content:center; color:var(--cyan); letter-spacing:.15em; font-size:13px;
+    text-transform:uppercase; touch-action:none; user-select:none; -webkit-user-select:none;
+    margin-top:10px; }
+  #wrap{ max-width:460px; margin:0 auto; padding:18px 16px 60px; }
+  h1{ color:var(--paper); font-size:19px; letter-spacing:.18em; margin:6px 0 2px;
+    text-transform:uppercase; }
+  h1 .x{ color:var(--cyan); }
+  .sub{ font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:10px; }
+  #themeBtn{ width:100%; margin-bottom:14px; }
+  fieldset{ border:1px solid var(--line); margin:0 0 16px; padding:12px; }
+  .pc-commute .fs-parade{ display:none; }
+  .pc-parade .fs-commute{ display:none; }
+  legend{ color:var(--cyan); font-size:13px; letter-spacing:.2em; padding:0 6px;
+    text-transform:uppercase; }
+  .row{ display:flex; align-items:center; gap:10px; margin:10px 0; }
+  label{ width:92px; font-size:15px; opacity:1; }
+  input[type=text]{ flex:1; background:#0e141c; color:var(--paper);
+    border:1px solid var(--line); font-family:inherit; padding:10px; font-size:16px; }
+  input[type=range]{ flex:1; accent-color:var(--cyan); height:32px; }
+  input[type=color]{ flex:1; height:38px; border:1px solid var(--line);
+    background:none; padding:2px; }
+  select{ flex:1; background:#0e141c; color:var(--paper); border:1px solid var(--line);
+    font-family:inherit; font-size:15px; padding:9px; }
+  .v{ width:50px; text-align:right; color:var(--paper); font-size:14px; }
+  button{ background:none; border:1px solid var(--line); color:var(--cyan);
+    font-family:inherit; font-size:14px; letter-spacing:.12em; text-transform:uppercase;
+    padding:14px 8px; cursor:pointer; flex:1; }
+  button:active{ background:var(--cyan); color:var(--ink); }
+  button.warm{ color:var(--warm); border-color:rgba(245,148,63,.5); }
+  button.big{ font-size:16px; padding:18px 8px; font-weight:bold; }
+  #status{ font-size:13px; letter-spacing:.1em; margin:10px 0; min-height:18px;
+    text-transform:uppercase; }
+  #status.live{ color:var(--warm); }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .hint{ font-size:12px; opacity:.7; line-height:1.7; margin-top:8px; }
+  footer{ font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    margin-top:20px; opacity:.65; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>CONTROL ROOM <span class="x">::</span> <span id="pieceName">CHONK PARADE</span></h1>
+  <div class="sub">you are the pilot now — the projection obeys this page</div>
+  <button id="themeBtn">☾ / ☀ dark · light</button>
+
+  <fieldset>
+    <legend>connect</legend>
+    <div class="row"><label>piece</label>
+      <select id="pieceSel"><option value="parade">chonk parade</option>
+      <option value="commute">commute deck</option></select></div>
+    <div class="row"><label>your name</label>
+      <input type="text" id="nick" maxlength="24" placeholder="pilot nickname"></div>
+    <div class="row"><label>room</label>
+      <input type="text" id="room" maxlength="24" value="hq"></div>
+    <div class="row"><button id="connectBtn">take the controls</button></div>
+    <div id="status">offline</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>make your mark</legend>
+    <div class="row"><button class="big warm" id="shoutBtn">⚡ flash my name on the wall</button></div>
+    <div class="hint">your pilot name appears big on the projection for a moment. be legendary, be kind.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>chonks</legend>
+    <div class="row"><label>count</label><input type="range" data-k="count" min="1" max="12" step="1" value="3"><span class="v">3</span></div>
+    <div class="row"><label>size</label><input type="range" data-k="size" min="0.04" max="0.5" step="0.01" value="0.16"><span class="v">0.16</span></div>
+    <div class="row"><label>speed</label><input type="range" data-k="speed" min="0.1" max="3" step="0.05" value="1"><span class="v">1.00</span></div>
+    <div class="row"><label>pulse</label><input type="range" data-k="pulse" min="0" max="3" step="0.05" value="1"><span class="v">1.00</span></div>
+    <div class="row"><label>outline</label><input type="range" data-k="outline" min="0" max="2" step="0.05" value="0"><span class="v">0.00</span></div>
+    <div class="row"><label>creature</label>
+      <select id="creatureSel"><option value="stick">stick walker</option>
+      <option value="chonk">classic chonk</option></select></div>
+    <div class="row"><label>chonk color</label><input type="color" id="bodyColIn" value="#0a0a0c"></div>
+    <div class="row"><label>travel</label>
+      <select id="modeSel"><option value="walk">walk across</option>
+      <option value="fall">fall</option></select></div>
+    <div class="row"><label>trails</label>
+      <select id="trailsSel"><option value="0">clean walk</option>
+      <option value="1">melt into bg</option></select></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>commute deck</legend>
+    <div class="hint">switch room above to: <b>commute</b> — these fly the voxel piece</div>
+    <div class="row"><label>chaos</label><input type="range" data-k="chaos" min="0" max="1" step="0.01" value="0"><span class="v">0.00</span></div>
+    <div class="row"><label>orbit</label><input type="range" data-k="orbit" min="0" max="3" step="0.05" value="0.5"><span class="v">0.50</span></div>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button id="sereneBtn" style="flex:1; font-family:inherit; padding:10px;">SERENE</button>
+      <button id="fullChaosBtn" style="flex:1; font-family:inherit; padding:10px;">FULL CHAOS</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>melt</legend>
+    <div class="row"><label>melt</label><input type="range" data-k="melt" min="0" max="3" step="0.05" value="1"><span class="v">1.00</span></div>
+    <div class="row"><label>mosh</label><input type="range" data-k="mosh" min="0" max="3" step="0.05" value="0.8"><span class="v">0.80</span></div>
+    <div class="row"><label>rebirth s</label><input type="range" data-k="rebirth" min="4" max="60" step="1" value="18"><span class="v">18</span></div>
+    <div class="row"><button id="restampBtn">re-stamp now</button></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>background</legend>
+    <div class="row"><label>mode</label>
+      <select id="bgSel"><option value="photo">photo / paper</option>
+      <option value="solid">solid color</option>
+      <option value="clear">plate</option></select></div>
+    <div class="row"><label>color</label><input type="color" id="bgColIn" value="#ff00ff"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>curator deck (unlock)</legend>
+    <div class="row"><label>pass</label>
+      <input type="text" id="curPass" placeholder="curator word"><button id="curBtn" style="flex:0 0 90px">unlock</button></div>
+    <div id="curatorBox" style="display:none">
+      <div class="hint" style="margin-bottom:8px">mapping — pick a corner, nudge it onto the surface:</div>
+      <div class="grid4">
+        <button class="cSel" data-i="0">top left</button><button class="cSel" data-i="1">top right</button>
+        <button class="cSel" data-i="2">bot left</button><button class="cSel" data-i="3">bot right</button>
+      </div>
+      <div class="pad" id="mapPad">◇ drag here — corner follows your finger ◇</div>
+      <div class="row" style="margin-top:10px"><button class="warm" id="mapResetBtn">reset mapping</button></div>
+      <div class="row" style="margin-top:12px"><label>proj. size</label>
+        <button id="sizeDn">smaller</button><button id="sizeUp">bigger</button></div>
+      <div class="row"><label>surface</label>
+        <input type="text" id="awIn" value="200" style="flex:0 0 70px"> x
+        <input type="text" id="ahIn" value="40" style="flex:0 0 70px">
+        <button id="aspectBtn" style="flex:0 0 80px">apply</button></div>
+      <div class="hint">size grows/shrinks the whole projection about its center. surface = the W x H ratio of the mapped spot. big corner moves: press P on the projector and drag.</div>
+    </div>
+  </fieldset>
+
+  <footer>static html :: no build :: no platform :: yours — ooakosimo</footer>
+</div>
+
+<script>
+"use strict";
+let client = null, topic = '', corner = 0;
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
+
+// restore identity
+try{
+  $('nick').value = localStorage.getItem('ooak_nick') || '';
+  const r = new URLSearchParams(location.search).get('room');
+  if (r) $('room').value = r;
+}catch(e){}
+
+function send(obj){
+  if (!client || !topic) return;
+  obj.n = ($('nick').value || 'anon').slice(0,24);
+  try{ client.publish(topic, JSON.stringify(obj)); }catch(e){}
+}
+
+$('connectBtn').addEventListener('click', ()=>{
+  const room = ($('room').value || 'hq').trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
+  $('room').value = room;
+  try{ localStorage.setItem('ooak_nick', $('nick').value||''); }catch(e){}
+  topic = 'ooakosimo/parade/' + room;
+  statusEl.textContent = 'connecting…'; statusEl.classList.remove('live');
+  if (client){ try{ client.end(true); }catch(e){} }
+  client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', { reconnectPeriod: 4000 });
+  client.on('connect', ()=>{
+    statusEl.textContent = 'LIVE :: room "' + room + '" — you fly, the wall obeys';
+    statusEl.classList.add('live');
+    send({k:'hello'});
+  });
+  client.on('error', ()=>{ statusEl.textContent = 'connection error — check internet'; });
+});
+
+// sliders
+document.querySelectorAll('input[type=range]').forEach(r=>{
+  r.addEventListener('input', ()=>{
+    const v = parseFloat(r.value);
+    r.parentElement.querySelector('.v').textContent =
+      (r.step === '1') ? v.toFixed(0) : v.toFixed(2);
+    send({k: r.dataset.k, v});
+  });
+});
+
+$('modeSel').addEventListener('change', ()=> send({k:'mode', v:$('modeSel').value}));
+$('trailsSel').addEventListener('change', ()=> send({k:'trails', v:$('trailsSel').value==='1'}));
+$('bgSel').addEventListener('change', ()=> send({k:'bgmode', v:$('bgSel').value}));
+$('bgColIn').addEventListener('input', ()=> send({k:'bgcol', v:$('bgColIn').value}));
+$('bodyColIn').addEventListener('input', ()=> send({k:'bodycol', v:$('bodyColIn').value}));
+$('creatureSel').addEventListener('change', ()=> send({k:'creature', v:$('creatureSel').value}));
+$('restampBtn').addEventListener('click', ()=> send({k:'restamp'}));
+$('sereneBtn').addEventListener('click', ()=> send({k:'chaos', v:0}));
+$('fullChaosBtn').addEventListener('click', ()=> send({k:'chaos', v:1}));
+
+// piece selector: one console flies everything — the room word is the tuner.
+document.querySelectorAll('legend').forEach(l => {
+  const f = l.parentElement, t = l.textContent.trim();
+  if (['chonks','melt','background','curator deck (unlock)'].includes(t))
+    f.classList.add('fs-parade');
+  if (t === 'commute deck') f.classList.add('fs-commute');
+});
+document.body.classList.add('pc-parade');
+$('pieceSel').addEventListener('change', () => {
+  const p = $('pieceSel').value;
+  document.body.classList.toggle('pc-parade', p === 'parade');
+  document.body.classList.toggle('pc-commute', p === 'commute');
+  $('pieceName').textContent = p === 'parade' ? 'CHONK PARADE' : 'COMMUTE DECK';
+  document.title = 'CONTROL ROOM :: ' + $('pieceName').textContent + ' :: OOAKOSIMO';
+  $('room').value = p === 'parade' ? 'hq' : 'commute';
+});
+
+// make your mark
+$('shoutBtn').addEventListener('click', ()=> send({k:'shout'}));
+
+// theme (on the root element so the page background follows too)
+$('themeBtn').addEventListener('click', ()=>{
+  document.documentElement.classList.toggle('light');
+  try{ localStorage.setItem('ooak_theme',
+    document.documentElement.classList.contains('light')?'light':'dark'); }catch(e){}
+});
+try{ if (localStorage.getItem('ooak_theme')==='light')
+  document.documentElement.classList.add('light'); }catch(e){}
+
+// curator unlock — a courtesy gate, not a vault (see flight manual)
+const CUR_PASS = 'modeka';   // change me before install
+$('curBtn').addEventListener('click', ()=>{
+  if (($('curPass').value||'').trim().toLowerCase() === CUR_PASS){
+    $('curatorBox').style.display = 'block';
+    $('curPass').style.borderColor = '#F5943F';
+  } else { $('curPass').value=''; $('curPass').placeholder='nope :)'; }
+});
+$('sizeUp').addEventListener('click', ()=> send({k:'scalemap', v:1.05}));
+$('sizeDn').addEventListener('click', ()=> send({k:'scalemap', v:0.95}));
+$('aspectBtn').addEventListener('click', ()=>{
+  const aw = parseFloat($('awIn').value), ah = parseFloat($('ahIn').value);
+  if (aw>0) send({k:'aw', v:aw});
+  if (ah>0) setTimeout(()=>send({k:'ah', v:ah}), 250);
+});
+
+// mapping
+document.querySelectorAll('.cSel').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    corner = parseInt(b.dataset.i);
+    document.querySelectorAll('.cSel').forEach(x=>x.style.color='');
+    b.style.color = '#F5943F';
+  });
+});
+
+// trackpad: drag = the selected corner follows, streamed ~16x/sec
+const pad = $('mapPad');
+let padLast = null, padAcc = {dx:0, dy:0}, padTimer = null;
+pad.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  pad.setPointerCapture(e.pointerId);
+  padLast = [e.clientX, e.clientY];
+});
+pad.addEventListener('pointermove', e=>{
+  if (!padLast) return;
+  padAcc.dx += (e.clientX - padLast[0]) * 1.6;
+  padAcc.dy += (e.clientY - padLast[1]) * 1.6;
+  padLast = [e.clientX, e.clientY];
+  if (!padTimer){
+    padTimer = setTimeout(()=>{
+      const dx = Math.round(padAcc.dx), dy = Math.round(padAcc.dy);
+      padAcc = {dx:0, dy:0}; padTimer = null;
+      if (dx || dy) send({k:'corner', i:corner, dx, dy});
+    }, 60);
+  }
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>
+  pad.addEventListener(ev, ()=>{ padLast = null; }));
+
+// reset needs a second press — no more fat-finger disasters
+let resetArm = 0;
+$('mapResetBtn').addEventListener('click', ()=>{
+  const now = Date.now();
+  if (now - resetArm < 3000){
+    send({k:'mapreset'});
+    $('mapResetBtn').textContent = 'reset mapping';
+    resetArm = 0;
+  } else {
+    resetArm = now;
+    $('mapResetBtn').textContent = 'press again to confirm';
+    setTimeout(()=>{
+      if (Date.now() - resetArm >= 2900){
+        $('mapResetBtn').textContent = 'reset mapping'; resetArm = 0;
+      }
+    }, 3100);
+  }
+});
+</script>
+</body>
+</html>

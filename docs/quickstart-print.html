@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QUICKSTART :: print sheet :: OOAKOSIMO</title>
+<link rel="icon" href="/gumamela.gif" type="image/gif">
+<style>
+  /* Print on A4 ivory board. Toggle accent by body class: .red or .black */
+  @page { size: A4; margin: 14mm; }
+  body { font-family: 'Courier New', ui-monospace, monospace; color: #111;
+    background: #ffffff; margin: 0; }
+  #sheet { max-width: 720px; margin: 0 auto; padding: 24px; }
+  body.red   { --acc: #b3231a; }
+  body.black { --acc: #111; }
+  h1 { font-size: 34px; letter-spacing: .1em; text-transform: uppercase;
+    margin: 0 0 2px; color: var(--acc); }
+  .strap { font-size: 14px; letter-spacing: .16em; text-transform: uppercase;
+    border-bottom: 3px solid var(--acc); padding-bottom: 10px;
+    margin-bottom: 18px; }
+  h2 { font-size: 16px; letter-spacing: .18em; text-transform: uppercase;
+    margin: 22px 0 8px; color: var(--acc); }
+  p, li { font-size: 14.5px; line-height: 1.75; margin: 6px 0; }
+  ol { padding-left: 22px; } ol li { margin: 8px 0; }
+  b { color: var(--acc); }
+  .url { font-size: 19px; font-weight: bold; letter-spacing: .06em;
+    border: 2.5px solid var(--acc); padding: 10px 14px; display: inline-block;
+    margin: 8px 0; }
+  .rooms { display: flex; gap: 14px; margin: 8px 0; }
+  .rooms div { border: 2px dashed var(--acc); padding: 8px 14px;
+    font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
+  .qr { float: right; width: 128px; height: 128px; border: 2.5px solid var(--acc);
+    margin: 0 0 10px 16px; object-fit: contain; background: #fff;
+    padding: 6px; box-sizing: border-box; }
+  table { border-collapse: collapse; margin: 6px 0; }
+  td { border: 1.5px solid #111; padding: 5px 12px; font-size: 13.5px; }
+  td:first-child { font-weight: bold; color: var(--acc); }
+  footer { margin-top: 26px; border-top: 3px solid var(--acc); padding-top: 8px;
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+  #toolbar { position: fixed; right: 12px; top: 12px; font-family: inherit; }
+  #toolbar button { font-family: inherit; padding: 8px 12px; cursor: pointer; }
+  @media print { #toolbar { display: none; } }
+</style>
+</head>
+<body class="red">
+<div id="toolbar">
+  <button onclick="document.body.classList.toggle('black');
+    document.body.classList.toggle('red')">red / black ink</button>
+  <button onclick="window.print()">print</button>
+</div>
+
+<div id="sheet">
+  <h1>SCAN TO FLY THIS ARTWORK</h1>
+  <div class="strap">put your name on the wall :: ooakosimo</div>
+
+  <img class="qr" src="qr.jpg" alt="QR — scan to open the control room">
+
+  <h2>Visitors — four steps</h2>
+  <ol>
+    <li><b>Scan the QR</b> (or type the address below). The CONTROL ROOM opens.
+        Nothing installs. No permissions asked.</li>
+    <li><b>Pick your piece</b> in the dropdown — <b>chonk parade</b> or
+        <b>commute deck</b>.</li>
+    <li><b>Invent a pilot name</b>, then press <b>TAKE THE CONTROLS</b>.</li>
+    <li><b>Fly.</b> Sliders move the light in real time.
+        <b>⚡ FLASH MY NAME</b> puts your pilot name on the projection.
+        Be legendary, be kind.</li>
+  </ol>
+
+  <div class="url">ooakosimo.neocities.org/console</div>
+  <div class="rooms">
+    <div>parade room :: <b>hq</b></div>
+    <div>commute room :: <b>commute</b></div>
+  </div>
+
+  <h2>On your own phone or tablet</h2>
+  <p>Open <b>ooakosimo.neocities.org</b> and pick a piece — it runs right on
+  your device. On the commute deck: <b>drag to orbit, pinch to zoom</b>, and the
+  <b>☰ controls</b> button opens chaos, volume, and fullscreen.</p>
+
+  <h2>On a computer</h2>
+  <table>
+    <tr><td>S</td><td>settings panel (all sliders)</td></tr>
+    <tr><td>P</td><td>pin mode — drag corners to map onto anything</td></tr>
+    <tr><td>F</td><td>fullscreen</td></tr>
+    <tr><td>I</td><td>about this piece (commute)</td></tr>
+    <tr><td>0</td><td>hide / show the HUD</td></tr>
+  </table>
+
+  <footer>static html :: no build :: no platform :: yours — ooakosimo ::
+  manual at /docs/</footer>
+</div>
+</body>
+</html>
