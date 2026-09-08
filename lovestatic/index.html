@@ -45,7 +45,7 @@
 <div id="panel"></div>
 <script>
 let AUDIO_SOURCE='auto',started=false,fft,micStream,micSrc,micGainNode,song=null,currentTrack=0;
-const TRACKS=['LoveStatic-Ooakosimo.mp3','Heartbreak-Hotel-on-Mars.mp3'];
+const TRACKS=['https://mohini.neocities.org/LoveStatic-Ooakosimo.mp3','https://mohini.neocities.org/Heartbreak-Hotel-on-Mars.mp3'];
 let SENSITIVITY=1.15,MIC_GAIN=1.6,NORMALIZE=true,FROZEN=false,SHOW_HUD=true,SHOW_PANEL=false,SHOW_DECK=false,AUTO_CRUISE=true,DENSITY=2;
 const BANDS=['sub','bass','lowMid','mid','high','air'],HZ={sub:[20,60],bass:[60,140],lowMid:[140,400],mid:[400,1600],high:[1600,5000],air:[5000,14000]};
 const raw={sub:0,bass:0,lowMid:0,mid:0,high:0,air:0},nrm={...raw},peak={sub:8,bass:8,lowMid:8,mid:8,high:8,air:8};
