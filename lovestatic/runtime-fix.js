@@ -260,5 +260,27 @@
     h.textContent=`LOVE STATIC // ${src}\nSUB ${bar('sub')}  BASS ${bar('bass')}  LM ${bar('lowMid')}\nMID ${bar('mid')}  HIGH ${bar('high')}  AIR ${bar('air')}\nPAL ${PALETTES[paletteIndex].name}  SENS ${SENSITIVITY.toFixed(1)}  AUTO ${AUTO_CRUISE?'ON':'OFF'}  FPS ${frameRate().toFixed(0)}\nAUDIO ${streamStatus}  REMOTE ${remoteStatus}\nH:deck  S:mods  F:full`;
   };
 
-  console.log('LOVE STATIC runtime patch v3 loaded');
+  // Extra messages used by the phone remote's collapsible MOD controls.
+  const baseHandleRemoteForMods=handleRemote;
+  handleRemote=function(c){
+    if(c&&c.type==='mod'){
+      const m=MODS[c.key],prop=c.prop;
+      if(m&&['band','min','max','curve','attack','release'].includes(prop)){
+        if(prop==='band'){if(BANDS.includes(c.value))m.band=c.value}
+        else{const v=Number(c.value);if(Number.isFinite(v))m[prop]=v}
+      }
+      publishState();return;
+    }
+    if(c&&c.type==='global'){
+      if(c.name==='normalize')NORMALIZE=!!c.value;
+      if(c.name==='density'){
+        DENSITY=constrain(Math.round(Number(c.value)||2),1,3);
+        buildScene();
+      }
+      publishState();return;
+    }
+    baseHandleRemoteForMods(c);
+  };
+
+  console.log('LOVE STATIC runtime patch v4 loaded');
 })();
