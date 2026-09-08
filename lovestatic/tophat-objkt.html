@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>Top Hat Love Static</title>
+<link rel="icon" href="https://ooakosimo.neocities.org/gumamela.gif" type="image/gif">
+<meta name="description" content="TOP HAT LOVE STATIC — an interactive image-to-code translation of an original hand drawing by OOAKOSIMO. Drag to disturb the static; tap for a LOVE SHOCK." />
+<meta property="og:title" content="Top Hat Love Static" />
+<meta property="og:description" content="An interactive hand-drawing-to-code experiment by OOAKOSIMO. Drag to disturb the static; tap for a LOVE SHOCK." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="thumbnail.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1536" />
+<meta property="og:image:height" content="1536" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Top Hat Love Static" />
+<meta name="twitter:description" content="An interactive hand-drawing-to-code experiment by OOAKOSIMO." />
+<meta name="twitter:image" content="thumbnail.png" />
+<link rel="image_src" href="https://mohini.neocities.org/thumbnail.png" />
+<style>
+  html,body{margin:0;height:100%;background:#f7f7f4;overflow:hidden;touch-action:none}
+  body{display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  canvas{display:block;width:100vw;height:100vh}
+  .hint{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);font-size:12px;letter-spacing:.08em;text-transform:uppercase;background:rgba(247,247,244,.82);padding:7px 10px;border:1px solid #111;color:#111;pointer-events:none;mix-blend-mode:multiply;opacity:.8}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+</head>
+<body>
+<div class="hint">drag to agitate · tap for love shock</div>
+<script>
+let hairs=[],hearts=[],scratches=[],bolts=[];
+let shock=0,staticEnergy=0;
+let BASE_W=700,BASE_H=920, sx=1, sy=1, sc=1, ox=0, oy=0;
+
+function setup(){
+  createCanvas(windowWidth,windowHeight);
+  pixelDensity(1); strokeCap(SQUARE); strokeJoin(MITER);
+  buildHair(); buildHearts(); buildScratches(); buildBolts();
+}
+
+function windowResized(){ resizeCanvas(windowWidth,windowHeight); }
+
+function beginResponsive(){
+  sc=min(width/BASE_W,height/BASE_H);
+  ox=(width-BASE_W*sc)/2;
+  oy=(height-BASE_H*sc)/2;
+  push(); translate(ox,oy); scale(sc);
+}
+function endResponsive(){ pop(); }
+
+function draw(){
+  background(247);
+  staticEnergy=lerp(staticEnergy,0,0.06); shock*=0.93;
+  beginResponsive();
+  push(); translate(BASE_W/2,BASE_H*0.46);
+  drawBackgroundScratches(); drawLightning(); drawHearts(); drawBody(); drawHat(); drawFace(); updateAndDrawHair();
+  pop();
+  drawShockwave();
+  endResponsive();
+}
+
+function pointerToLocal(){
+  return createVector((mouseX-ox)/sc-BASE_W/2,(mouseY-oy)/sc-BASE_H*0.46);
+}
+
+function buildHair(){
+  hairs=[];
+  for(let i=0;i<180;i++){
+    let x=randomGaussian(0,105), y=random(105,300);
+    let spread=map(y,105,300,95,45); x=constrain(x,-spread-40,spread+40);
+    hairs.push(new Hair(x,y,random(22,75),false));
+  }
+  for(let i=0;i<70;i++){
+    let side=random()<0.5?-1:1;
+    hairs.push(new Hair(side*random(105,175),random(15,120),random(25,65),true));
+  }
+}
+
+class Hair{
+  constructor(x,y,len,sideHair){
+    this.base=createVector(x,y); this.tip=createVector(x,y+len); this.vel=createVector(0,0);
+    this.len=len; this.sideHair=sideHair; this.seed=random(10000);
+    if(sideHair){ this.tip.x += x<0?-random(15,50):random(15,50); this.tip.y+=random(-20,25); }
+    else this.tip.x+=random(-30,30);
+  }
+  update(){
+    let m=pointerToLocal(); let d=dist(m.x,m.y,this.base.x,this.base.y);
+    let desired;
+    if(this.sideHair) desired=createVector(this.base.x+(this.base.x<0?-this.len*0.6:this.len*0.6),this.base.y+this.len*0.15);
+    else desired=createVector(this.base.x+sin(frameCount*0.025+this.seed)*7,this.base.y+this.len);
+    if(d<220){ let pull=p5.Vector.sub(m,this.tip); pull.setMag(map(d,0,220,0.9,0)); this.vel.add(pull); }
+    if(shock>0.02){ let away=this.base.copy(); away.normalize(); away.mult(shock*3); this.vel.add(away); }
+    let spring=p5.Vector.sub(desired,this.tip); spring.mult(0.055); this.vel.add(spring);
+    this.vel.x+=random(-1,1)*staticEnergy*0.25; this.vel.y+=random(-1,1)*staticEnergy*0.18;
+    this.vel.mult(0.84); this.tip.add(this.vel);
+  }
+  show(){
+    stroke(5); strokeWeight(random(1.2,2.4)); noFill();
+    let mx=lerp(this.base.x,this.tip.x,0.52), my=lerp(this.base.y,this.tip.y,0.52);
+    let bend=sin(this.seed+frameCount*0.018)*(4+staticEnergy*2);
+    beginShape(); vertex(this.base.x,this.base.y); vertex(mx+bend,my); vertex(this.tip.x,this.tip.y); endShape();
+    if(this.seed%3<1){ strokeWeight(0.7); line(this.base.x+3,this.base.y,this.tip.x+random(-3,3),this.tip.y); }
+  }
+}
+function updateAndDrawHair(){ for(let h of hairs){h.update();h.show();} }
+
+function drawFace(){
+  noFill(); stroke(3); strokeWeight(4);
+  beginShape(); vertex(-118,25); vertex(-105,95); vertex(-62,145); vertex(0,166); vertex(67,142); vertex(110,86); vertex(117,25); endShape();
+  strokeWeight(5); line(0,70,-25,145); line(0,70,31,145);
+  drawEye(-58,65); drawEye(60,62);
+  for(let i=0;i<7;i++){ strokeWeight(random(1,3)); line(-100,35+i,-42,22+random(-4,5)); line(36,22+random(-4,5),102,34+i); }
+}
+function drawEye(x,y){
+  let m=pointerToLocal(); let ang=atan2(m.y-y,m.x-x);
+  stroke(3); strokeWeight(4); noFill(); arc(x,y,74,50,PI,TWO_PI); line(x-35,y+7,x+38,y+7);
+  fill(3); noStroke(); ellipse(x+cos(ang)*9,y+sin(ang)*7,18,18);
+}
+
+function drawHat(){
+  stroke(3); noFill(); strokeWeight(7);
+  beginShape(); vertex(-180,15); vertex(-115,-3); vertex(0,5); vertex(115,-2); vertex(187,14); vertex(130,38); vertex(0,48); vertex(-128,39); endShape(CLOSE);
+  strokeWeight(6); beginShape(); vertex(-112,-5); vertex(-128,-205); vertex(-90,-230); vertex(0,-240); vertex(95,-226); vertex(125,-205); vertex(108,-8); endShape(CLOSE);
+  strokeWeight(7); line(-120,-110,115,-110); line(-118,-92,113,-92);
+  for(let x=-105;x<=105;x+=10){ strokeWeight(random(1,3)); line(x+random(-5,5),-205+random(-8,8),x+random(-4,4),-20); }
+  for(let i=0;i<35;i++){ strokeWeight(random(.5,1.5)); let y=random(-215,-18); line(random(-110,-30),y,random(30,112),y+random(-3,3)); }
+}
+
+function drawBody(){
+  stroke(3); noFill(); strokeWeight(6);
+  beginShape(); vertex(-20,260); vertex(-85,285); vertex(-165,330); vertex(-190,415); vertex(190,415); vertex(168,330); vertex(80,285); vertex(20,260); endShape();
+  for(let i=0;i<90;i++){ strokeWeight(random(1,4)); let x1=random(-180,180), y1=random(280,410), x2=x1+random(-100,100), y2=y1+random(-30,65); line(x1,y1,x2,y2); }
+}
+
+function buildHearts(){ hearts=[[-240,-175,46],[245,-170,58],[-250,45,32],[250,35,45],[-258,180,58],[260,185,52],[235,285,42]]; }
+function drawHearts(){
+  let pulse=1+sin(frameCount*(0.07+staticEnergy*0.003))*0.08;
+  for(let h of hearts){
+    push(); translate(h[0],h[1]);
+    let p=pointerToLocal(); let proximity=dist(p.x,p.y,h[0],h[1]); let s=h[2]*pulse; if(proximity<130)s*=1.2;
+    drawScribbleHeart(0,0,s); pop();
+  }
+}
+function drawScribbleHeart(x,y,s){
+  noFill(); stroke(2);
+  for(let k=0;k<5;k++){
+    strokeWeight(random(1.5,3)); beginShape();
+    for(let i=0;i<=50;i++){
+      let t=map(i,0,50,0,TWO_PI); let hx=16*pow(sin(t),3); let hy=-(13*cos(t)-5*cos(2*t)-2*cos(3*t)-cos(4*t));
+      vertex(x+hx*s*0.03+random(-2,2),y+hy*s*0.03+random(-2,2));
+    }
+    endShape();
+  }
+}
+
+function buildBolts(){ bolts=[[-205,-115,-285,-45],[-195,-40,-285,20],[205,-100,280,-40],[205,-20,290,35],[-205,115,-290,90],[210,105,290,80],[-210,255,-285,235],[210,240,285,215]]; }
+function drawLightning(){
+  for(let b of bolts){
+    stroke(3); strokeWeight(3+staticEnergy*0.08); let steps=6,lastX=b[0],lastY=b[1];
+    for(let i=1;i<=steps;i++){
+      let t=i/steps,nx=lerp(b[0],b[2],t),ny=lerp(b[1],b[3],t);
+      if(i<steps){nx+=random(-10,10)*(1+staticEnergy*0.03);ny+=random(-10,10)*(1+staticEnergy*0.03);}
+      line(lastX,lastY,nx,ny); lastX=nx; lastY=ny;
+    }
+  }
+}
+
+function buildScratches(){
+  scratches=[];
+  for(let i=0;i<220;i++){
+    let a=random(TWO_PI),r=random(170,320);
+    scratches.push({x:cos(a)*r,y:sin(a)*r*1.15,len:random(8,65),ang:a+random(-1,1),weight:random(.5,2.5)});
+  }
+}
+function drawBackgroundScratches(){
+  stroke(5);
+  for(let s of scratches){
+    strokeWeight(s.weight); let jitter=staticEnergy*0.08, x1=s.x+random(-jitter,jitter), y1=s.y+random(-jitter,jitter);
+    line(x1,y1,x1+cos(s.ang)*s.len,y1+sin(s.ang)*s.len);
+  }
+  for(let i=0;i<22;i++){
+    let a=i*2.39,r=215+(i%5)*23,x=cos(a)*r,y=sin(a)*r; noFill(); strokeWeight(1); rect(x,y,random(15,45),random(10,38));
+  }
+}
+
+function mouseMoved(){ staticEnergy=min(staticEnergy+5,30); }
+function mouseDragged(){ staticEnergy=min(staticEnergy+8,40); return false; }
+function mouseClicked(){ shock=13; staticEnergy=45; }
+function touchMoved(){ staticEnergy=min(staticEnergy+8,40); return false; }
+function touchStarted(){ shock=13; staticEnergy=45; return false; }
+
+function drawShockwave(){
+  if(shock<0.1)return;
+  push();
+  let px=(mouseX-ox)/sc, py=(mouseY-oy)/sc;
+  noFill(); stroke(0,map(shock,0,13,0,150)); strokeWeight(2);
+  let radius=map(shock,13,0,20,500); ellipse(px,py,radius);
+  for(let i=0;i<12;i++){
+    let a=TWO_PI*i/12+frameCount*0.02,r=radius*0.5;
+    line(px+cos(a)*r,py+sin(a)*r,px+cos(a)*(r+15),py+sin(a)*(r+15));
+  }
+  pop();
+}
+</script>
+</body>
+</html>
