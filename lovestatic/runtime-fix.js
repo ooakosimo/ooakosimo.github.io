@@ -1,18 +1,18 @@
-// LOVE STATIC runtime plumbing patch — mobile/audio/remote only.
-// Keeps the padded-room / character drawing untouched.
+// LOVE STATIC runtime patch v5 — mobile-safe audio + multi-instance remote.
+// The padded-room / character drawing in index.html is deliberately untouched.
 (() => {
   const $ = id => document.getElementById(id);
   const STREAM_TRACKS = ['LoveStatic-Ooakosimo.mp3','Heartbreak-Hotel-on-Mars.mp3'];
   const STREAM_NAMES = ['LOVE STATIC','HEARTBREAK HOTEL ON MARS'];
-  const VISUAL_PEER_ID = 'ooakosimo-lovestatic-vj';
+  const REMOTE_HUB_ID = 'ooakosimo-lovestatic-remote-hub-v5';
 
   let streamCtx=null, streamAnalyser=null, streamData=null;
   let streamAudio=null, streamMediaNode=null;
   let streamMicSource=null, streamMicGain=null;
   let streamStatus='ready';
 
-  let peerLibPromise=null, visualPeer=null;
-  let remoteConns=new Set(), remoteStatus='starting';
+  let peerLibPromise=null, visualPeer=null, hubConn=null, hubRetryTimer=null;
+  let remoteStatus='starting';
   let stateTimer=null;
 
   function loadPeerJS(){
@@ -65,10 +65,10 @@
       streamAudio.setAttribute('playsinline','');
       streamAudio.setAttribute('webkit-playsinline','');
       streamAudio.addEventListener('playing',()=>{streamStatus='playing';publishState()});
-      streamAudio.addEventListener('waiting',()=>streamStatus='buffering');
-      streamAudio.addEventListener('stalled',()=>streamStatus='buffering');
-      streamAudio.addEventListener('canplay',()=>{if(streamStatus==='loading')streamStatus='ready'});
-      streamAudio.addEventListener('error',()=>{streamStatus='audio error';console.warn('LOVE STATIC audio',streamAudio.error)});
+      streamAudio.addEventListener('waiting',()=>{streamStatus='buffering';publishState()});
+      streamAudio.addEventListener('stalled',()=>{streamStatus='buffering';publishState()});
+      streamAudio.addEventListener('canplay',()=>{if(streamStatus==='loading')streamStatus='ready';publishState()});
+      streamAudio.addEventListener('error',()=>{streamStatus='audio error';publishState();console.warn('LOVE STATIC audio',streamAudio.error)});
       streamMediaNode=streamCtx.createMediaElementSource(streamAudio);
     }
     return streamAudio;
@@ -108,7 +108,7 @@
     a.load();
     launch();
     const pp=a.play();
-    if(pp&&pp.catch)pp.catch(err=>{streamStatus='tap MUSIC again';console.warn('LOVE STATIC play blocked',err)});
+    if(pp&&pp.catch)pp.catch(err=>{streamStatus='tap MUSIC again';publishState();console.warn('LOVE STATIC play blocked',err)});
     publishState();
   };
 
@@ -128,7 +128,7 @@
       streamMicGain.connect(streamAnalyser);
       micSrc=streamMicSource;micGainNode=streamMicGain;
       streamStatus='mic live';publishState();
-    }catch(e){streamStatus='mic failed';setStartHint('MIC FAILED — HTTPS + microphone permission required.');console.warn('LOVE STATIC microphone',e)}
+    }catch(e){streamStatus='mic failed';setStartHint('MIC FAILED — HTTPS + microphone permission required.');publishState();console.warn('LOVE STATIC microphone',e)}
   };
 
   function bandAverage(lo,hi){
@@ -162,8 +162,7 @@
 
   togglePanel=function(){SHOW_PANEL=!SHOW_PANEL;const p=$('panel');if(p)p.style.display=SHOW_PANEL?'block':'none';if(SHOW_PANEL)buildPanel()};
 
-  // p5's original touchStarted() returned false globally, which cancels the
-  // browser's synthetic click on phones/tablets. Never swallow UI touches.
+  // Important mobile fix: p5 must never swallow a UI touch.
   window.touchStarted=function(e){
     const target=e&&e.target;
     if(target&&target.closest&&target.closest('button,input,select,a,#start,#deck,#panel,#deckToggle'))return true;
@@ -192,14 +191,27 @@
     p.querySelectorAll('[data-mod]').forEach(slot=>{let m=MODS[slot.dataset.mod];slot.querySelectorAll('select,input').forEach(el=>el.oninput=()=>{let prop=el.dataset.p||el.dataset.name;m[prop]=prop==='band'?el.value:Number(el.value);let out=el.nextElementSibling;if(out&&out.classList.contains('value'))out.textContent=Number(el.value).toFixed(2);publishState()})});
   };
 
-  function stateObject(){return{type:'state',palette:PALETTES[paletteIndex].name,sensitivity:SENSITIVITY,micGain:MIC_GAIN,auto:AUTO_CRUISE,frozen:FROZEN,source:AUDIO_SOURCE,track:currentTrack,audio:streamStatus,fps:Math.round(frameRate())}}
+  function modSnapshot(){
+    const o={};
+    for(const [k,m] of Object.entries(MODS))o[k]={band:m.band,min:m.min,max:m.max,curve:m.curve,attack:m.attack,release:m.release};
+    return o;
+  }
+
+  function deviceLabel(){
+    const p=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'device';
+    return `${p} ${screen.width}×${screen.height}`;
+  }
+
+  function stateObject(){return{
+    type:'state',instanceId:visualPeer&&visualPeer.id||'',device:deviceLabel(),
+    palette:PALETTES[paletteIndex].name,sensitivity:SENSITIVITY,micGain:MIC_GAIN,
+    normalize:NORMALIZE,density:DENSITY,mods:modSnapshot(),
+    auto:AUTO_CRUISE,frozen:FROZEN,source:AUDIO_SOURCE,track:currentTrack,
+    audio:streamStatus,fps:Math.round(frameRate())
+  }}
 
   publishState=function(){
-    const state=stateObject();
-    for(const conn of [...remoteConns]){
-      if(conn&&conn.open){try{conn.send(state)}catch(e){remoteConns.delete(conn)}}
-      else remoteConns.delete(conn);
-    }
+    if(hubConn&&hubConn.open){try{hubConn.send(stateObject())}catch(e){}}
   };
 
   handleRemote=function(c){
@@ -219,39 +231,66 @@
       if(streamMicGain)streamMicGain.gain.value=MIC_GAIN;
       if(micGainNode&&micGainNode.gain)micGainNode.gain.value=MIC_GAIN;
     }
+    if(c.type==='mod'){
+      const m=MODS[c.key],prop=c.prop;
+      if(m&&['band','min','max','curve','attack','release'].includes(prop)){
+        if(prop==='band'){if(BANDS.includes(c.value))m.band=c.value}
+        else{const v=Number(c.value);if(Number.isFinite(v))m[prop]=v}
+      }
+    }
+    if(c.type==='global'){
+      if(c.name==='normalize')NORMALIZE=!!c.value;
+      if(c.name==='density'){
+        DENSITY=constrain(Math.round(Number(c.value)||2),1,3);
+        buildScene();
+      }
+    }
+    if(c.type==='hello')publishState();
     publishState();
   };
 
-  function attachRemoteConn(conn){
-    const markOpen=()=>{remoteConns.add(conn);remoteStatus='REMOTE ONLINE';publishState()};
-    conn.on('open',markOpen);
-    conn.on('data',data=>{try{handleRemote(data)}catch(e){console.warn('LOVE STATIC remote data',e)}});
-    conn.on('close',()=>{remoteConns.delete(conn);remoteStatus=remoteConns.size?'REMOTE ONLINE':'waiting';publishState()});
-    conn.on('error',e=>{remoteConns.delete(conn);remoteStatus='remote error';console.warn('LOVE STATIC Peer connection',e)});
-    if(conn.open)markOpen();
+  function scheduleHubRetry(ms=1800){
+    clearTimeout(hubRetryTimer);
+    hubRetryTimer=setTimeout(()=>{if(!hubConn||!hubConn.open)connectToRemoteHub()},ms);
   }
 
-  async function connectPeerRemote(){
+  function attachHubConnection(conn){
+    hubConn=conn;
+    conn.on('open',()=>{remoteStatus='REMOTE ONLINE';publishState()});
+    conn.on('data',data=>{try{handleRemote(data)}catch(e){console.warn('LOVE STATIC remote data',e)}});
+    conn.on('close',()=>{if(hubConn===conn)hubConn=null;remoteStatus='looking for remote';scheduleHubRetry()});
+    conn.on('error',e=>{if(hubConn===conn)hubConn=null;remoteStatus='remote retry';console.warn('LOVE STATIC hub connection',e);scheduleHubRetry()});
+  }
+
+  function connectToRemoteHub(){
+    if(!visualPeer||visualPeer.destroyed||!visualPeer.open){scheduleHubRetry();return}
+    if(hubConn&&hubConn.open)return;
+    remoteStatus='looking for remote';
+    try{attachHubConnection(visualPeer.connect(REMOTE_HUB_ID,{reliable:true,metadata:{kind:'lovestatic-visual'}}))}
+    catch(e){console.warn('LOVE STATIC connect remote hub',e);scheduleHubRetry()}
+  }
+
+  async function startVisualPeer(){
     try{
       await loadPeerJS();
       if(visualPeer&&!visualPeer.destroyed)return;
       remoteStatus='signaling';
-      visualPeer=new Peer(VISUAL_PEER_ID,{debug:1});
-      visualPeer.on('open',()=>{remoteStatus='READY';publishState()});
-      visualPeer.on('connection',attachRemoteConn);
-      visualPeer.on('disconnected',()=>{remoteStatus='reconnecting';try{visualPeer.reconnect()}catch(e){}});
-      visualPeer.on('close',()=>{remoteStatus='offline';remoteConns.clear()});
+      visualPeer=new Peer(undefined,{debug:1});
+      visualPeer.on('open',()=>{remoteStatus='looking for remote';connectToRemoteHub();publishState()});
+      visualPeer.on('disconnected',()=>{remoteStatus='signal reconnecting';try{visualPeer.reconnect()}catch(e){}});
+      visualPeer.on('close',()=>{remoteStatus='signal offline';hubConn=null;scheduleHubRetry(2500)});
       visualPeer.on('error',e=>{
-        remoteStatus=e&&e.type==='unavailable-id'?'ID BUSY — close other LOVE STATIC visual':'peer error';
-        console.warn('LOVE STATIC PeerJS',e);
+        if(e&&e.type==='peer-unavailable'){remoteStatus='remote not open yet';scheduleHubRetry(1800);return}
+        remoteStatus='peer error';console.warn('LOVE STATIC PeerJS',e);scheduleHubRetry(3000);
       });
-      if(stateTimer)clearInterval(stateTimer);stateTimer=setInterval(()=>publishState(),1500);
+      if(stateTimer)clearInterval(stateTimer);stateTimer=setInterval(()=>{publishState();if(!hubConn||!hubConn.open)connectToRemoteHub()},1800);
     }catch(e){remoteStatus='PeerJS failed';console.warn('LOVE STATIC PeerJS loader',e)}
   }
 
-  // setup() in the original visual still calls connectMQTT(); repurpose that hook
-  // so we do not touch the artwork's main file.
-  connectMQTT=function(){connectPeerRemote()};
+  // setup() in the original visual still calls connectMQTT(); this is now a
+  // multi-instance PeerJS client. Every open visual gets a unique peer ID and
+  // connects to one remote hub, so one phone can control desktop + tablet + TV.
+  connectMQTT=function(){startVisualPeer()};
 
   drawHUD=function(){
     const h=$('hud');if(!h)return;if(!SHOW_HUD){h.textContent='';return}
@@ -260,27 +299,5 @@
     h.textContent=`LOVE STATIC // ${src}\nSUB ${bar('sub')}  BASS ${bar('bass')}  LM ${bar('lowMid')}\nMID ${bar('mid')}  HIGH ${bar('high')}  AIR ${bar('air')}\nPAL ${PALETTES[paletteIndex].name}  SENS ${SENSITIVITY.toFixed(1)}  AUTO ${AUTO_CRUISE?'ON':'OFF'}  FPS ${frameRate().toFixed(0)}\nAUDIO ${streamStatus}  REMOTE ${remoteStatus}\nH:deck  S:mods  F:full`;
   };
 
-  // Extra messages used by the phone remote's collapsible MOD controls.
-  const baseHandleRemoteForMods=handleRemote;
-  handleRemote=function(c){
-    if(c&&c.type==='mod'){
-      const m=MODS[c.key],prop=c.prop;
-      if(m&&['band','min','max','curve','attack','release'].includes(prop)){
-        if(prop==='band'){if(BANDS.includes(c.value))m.band=c.value}
-        else{const v=Number(c.value);if(Number.isFinite(v))m[prop]=v}
-      }
-      publishState();return;
-    }
-    if(c&&c.type==='global'){
-      if(c.name==='normalize')NORMALIZE=!!c.value;
-      if(c.name==='density'){
-        DENSITY=constrain(Math.round(Number(c.value)||2),1,3);
-        buildScene();
-      }
-      publishState();return;
-    }
-    baseHandleRemoteForMods(c);
-  };
-
-  console.log('LOVE STATIC runtime patch v4 loaded');
+  console.log('LOVE STATIC runtime patch v5 loaded');
 })();
