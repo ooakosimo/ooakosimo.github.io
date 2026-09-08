@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TOP HAT LOVE STATIC // PADDED ROOM VJ — OOAKOSIMO</title>
+<meta name="description" content="Audio-reactive p5.js VJ instrument by OOAKOSIMO: a hand drawing translated into a padded-room performance system.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<style>
+:root{--paper:#d8ceb8;--ink:#15130f;--cream:#eee6d5;--red:#8f2f2a;--panel:#171512e8}
+*{box-sizing:border-box}html,body{margin:0;overflow:hidden;background:var(--paper);font-family:"Courier New",monospace;touch-action:manipulation}canvas{display:block}
+#start{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:24px;text-align:center;background:radial-gradient(circle at 50% 42%,#e7ddc9 0,#c9bea8 48%,#9e9381 100%);color:var(--ink)}
+#start h1{max-width:800px;margin:0;font-size:clamp(28px,7vw,68px);line-height:.9;letter-spacing:-2px}.tag{padding:6px 9px;background:var(--ink);color:var(--cream);font-size:11px;letter-spacing:2px}.sources{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}.src,.deck button,#panel button{min-height:44px;border:2px solid var(--ink);background:var(--cream);color:var(--ink);box-shadow:4px 4px var(--ink);font:900 12px "Courier New";cursor:pointer}.src{min-width:220px;padding:13px 18px}.src:active,.deck button:active,#panel button:active,.hot{transform:translate(2px,2px);box-shadow:1px 1px var(--ink)!important;background:var(--ink)!important;color:var(--cream)!important}.hint{max-width:720px;font-size:10px;line-height:1.4;background:#eee6d5cc;padding:5px 7px}
+#hud{position:fixed;left:10px;top:9px;z-index:15;white-space:pre;pointer-events:none;font-size:10px;line-height:1.4;padding:5px 7px;background:#171512b8;color:#eee6d5}
+#deck{position:fixed;left:8px;right:8px;bottom:8px;z-index:20;display:none;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.deck button{min-width:0;padding:7px 4px;background:#eee6d5dd;backdrop-filter:blur(3px)}
+#panel{position:fixed;right:0;top:0;z-index:30;display:none;width:min(380px,92vw);height:100vh;overflow-y:auto;padding:12px;background:var(--panel);color:var(--cream);border-left:2px solid var(--red);font-size:11px}.slot{padding:8px;margin:8px 0;border:1px dashed #7c7468}.slot h3{margin:0 0 7px;color:#ff796c}.row{display:flex;align-items:center;gap:7px;margin:6px 0}.row label{width:82px;color:#bbb}.row input[type=range],.row select{flex:1;min-width:0}.row select{background:#27231e;color:var(--cream);border:1px solid #777}.value{width:40px;text-align:right}.mini{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+@media(max-width:680px){#deck{grid-template-columns:repeat(4,minmax(0,1fr))}.deck button{font-size:10px;min-height:40px}#hud{font-size:9px}}
+</style>
+</head>
+<body>
+<div id="start">
+  <div class="tag">OOAKOSIMO // HAND DRAWING → VJ INSTRUMENT</div>
+  <h1>TOP HAT<br>LOVE STATIC</h1>
+  <div class="sources"><button id="mic" class="src">◉ MIC / BLACKHOLE</button><button id="auto" class="src">∞ DISPLAY / AUTO</button></div>
+  <div class="hint">MIC / BLACKHOLE listens to live or routed system audio. AUTO performs itself when there is no operator. No pure white: PAPER / NOIR / BLOOD / XEROX palettes.</div>
+</div>
+<div id="hud"></div>
+<div id="deck" class="deck">
+  <button data-trigger="shock">Q LOVE SHOCK</button><button data-trigger="storm">W LIGHTNING</button><button data-trigger="hearts">E HEARTS</button><button data-trigger="ripple">R RIPPLE</button>
+  <button data-trigger="invert">T INVERT</button><button id="paletteBtn">P PALETTE</button><button id="autoBtn">A AUTO</button><button id="freezeBtn">SPACE FREEZE</button>
+  <button id="hudBtn">0 HUD</button><button id="panelBtn">S MODS</button><button id="sensDown">− SENS</button><button id="sensUp">+ SENS</button><button id="fullBtn">F FULL</button><button data-trigger="reset">RESET</button>
+</div>
+<div id="panel"></div>
+<script>
+let AUDIO_SOURCE='auto',started=false,fft,micStream,micSrc,micGainNode;
+let SENSITIVITY=1.15,MIC_GAIN=1.6,NORMALIZE=true,FROZEN=false,SHOW_HUD=true,SHOW_PANEL=false,AUTO_CRUISE=true,DENSITY=2;
+const BANDS=['sub','bass','lowMid','mid','high','air'],HZ={sub:[20,60],bass:[60,140],lowMid:[140,400],mid:[400,1600],high:[1600,5000],air:[5000,14000]};
+const raw={sub:0,bass:0,lowMid:0,mid:0,high:0,air:0},nrm={...raw},peak={sub:8,bass:8,lowMid:8,mid:8,high:8,air:8};
+let staticEnergy=0,shock=0,storm=0,heartBurst=0,invertFlash=0,roomPulse=0,lastAuto=0,lastControl=0;
+let hairs=[],hearts=[],scratches=[],ripples=[]; let paletteIndex=0;
+const PALETTES=[
+ {name:'PAPER',bg:[214,204,183],room:[178,166,145],ink:[22,20,16],accent:[126,46,40]},
+ {name:'NOIR',bg:[22,21,20],room:[54,50,46],ink:[235,226,207],accent:[168,70,63]},
+ {name:'BLOOD',bg:[57,25,24],room:[92,42,38],ink:[235,222,199],accent:[191,54,45]},
+ {name:'XEROX',bg:[207,198,177],room:[150,142,128],ink:[4,4,4],accent:[90,25,22]}
+];
+class Mod{constructor(name,band,min,max,curve=.8,attack=.55,release=.08){Object.assign(this,{name,band,min,max,curve,attack,release});this.s=0;this.value=min}update(){let x=pow(constrain(nrm[this.band],0,1),this.curve),k=x>this.s?this.attack:this.release;this.s+=(x-this.s)*k;this.value=this.min+this.s*(this.max-this.min);return this.value}}
+const MODS={
+ heartPulse:new Mod('heart pulse','sub',1,1.6,.7,.7,.08),beardPush:new Mod('beard push','bass',0,46,.8,.65,.07),hairWrithe:new Mod('hair writhe','lowMid',2,22,.9,.5,.08),faceJitter:new Mod('face jitter','mid',0,8,.9,.55,.12),lightning:new Mod('lightning density','high',.15,1,.75,.7,.1),scratches:new Mod('ink debris','air',.03,.45,.8,.72,.13),roomBreath:new Mod('room breath','sub',0,18,.85,.5,.06),globalStatic:new Mod('global static','mid',1,20,.8,.5,.08)
+};
+function setup(){createCanvas(windowWidth,windowHeight);pixelDensity(min(window.devicePixelRatio||1,1.5));fft=new p5.FFT(.82,1024);buildScene();bindUI();buildPanel()}
+function bindUI(){
+ mic.onclick=()=>startMic();auto.onclick=()=>startAuto();document.querySelectorAll('[data-trigger]').forEach(b=>b.onclick=e=>{e.stopPropagation();trigger(b.dataset.trigger)});
+ paletteBtn.onclick=()=>cyclePalette();autoBtn.onclick=()=>toggleAuto();freezeBtn.onclick=()=>toggleFreeze();hudBtn.onclick=()=>SHOW_HUD=!SHOW_HUD;panelBtn.onclick=()=>togglePanel();sensDown.onclick=()=>SENSITIVITY=max(.2,SENSITIVITY-.1);sensUp.onclick=()=>SENSITIVITY=min(3,SENSITIVITY+.1);fullBtn.onclick=()=>fullscreen(!fullscreen());
+}
+function launch(){started=true;start.style.display='none';deck.style.display='grid'}
+function startAuto(){AUDIO_SOURCE='auto';AUTO_CRUISE=true;launch()}
+async function startMic(){try{AUDIO_SOURCE='mic';await userStartAudio();micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});let ac=getAudioContext();micSrc=ac.createMediaStreamSource(micStream);micGainNode=ac.createGain();micGainNode.gain.value=MIC_GAIN;micSrc.connect(micGainNode);fft.setInput(micGainNode);launch()}catch(e){document.querySelector('#start .hint').textContent='MIC FAILED — use HTTPS / localhost and allow microphone permission.';console.error(e)}}
+function adapt(v,p){let next=max(v,p*.9994);return next<6?[0,next]:[constrain(v/next,0,1),next]}
+function readAudio(){
+ if(AUDIO_SOURCE==='auto'&&started){let t=millis()*.001,beat=pow(max(0,sin(t*2.2)),10),slow=sin(t*.32)*.5+.5;nrm.sub=.18+.48*(sin(t*.43)*.5+.5);nrm.bass=.12+.8*beat;nrm.lowMid=.15+.55*noise(t*.22+10);nrm.mid=.14+.6*(sin(t*.74+1.6)*.5+.5);nrm.high=.08+.74*pow(max(0,sin(t*1.31+2)),4);nrm.air=.06+.63*noise(t*.74+80)*(.4+.6*slow);for(let b of BANDS){nrm[b]=constrain(nrm[b]*SENSITIVITY,0,1);raw[b]=nrm[b]*180}return}
+ if(started&&fft){fft.analyze();for(let b of BANDS){raw[b]=fft.getEnergy(HZ[b][0],HZ[b][1]);let v;if(NORMALIZE)[v,peak[b]]=adapt(raw[b],peak[b]);else v=raw[b]/255;nrm[b]=constrain(v*SENSITIVITY,0,1)}}
+}
+function buildScene(){hairs=[];hearts=[];scratches=[];let mul=DENSITY===1?.65:DENSITY===3?1.45:1;for(let i=0;i<floor(160*mul);i++){let x=randomGaussian(0,92),y=random(72,250),len=random(20,70);hairs.push({bx:x,by:y,tx:x+random(-24,24),ty:y+len,seed:random(9999)});}hearts=[[-228,-150,42],[230,-145,51],[-240,40,30],[242,42,40],[-244,160,49],[245,170,45]];for(let i=0;i<floor(130*mul);i++)scratches.push({a:random(TWO_PI),r:random(165,285),len:random(7,50),ang:random(TWO_PI),w:random(.4,2)})}
+function draw(){readAudio();Object.values(MODS).forEach(m=>m.update());runAuto();let pal=PALETTES[paletteIndex];background(...pal.bg);drawRoom(pal);if(started){push();translate(width*.5,height*.48);let s=min(width/700,height/920)*1.25;scale(s);drawStaticField(pal);drawCharacter(pal);pop();drawRipples(pal)}drawHUD();shock*=.91;storm*=.92;heartBurst*=.9;invertFlash=max(0,invertFlash-1);roomPulse*=.93;staticEnergy=lerp(staticEnergy,MODS.globalStatic.value,.08)}
+function drawRoom(pal){let breath=MODS.roomBreath.value+roomPulse;stroke(...pal.ink,120);strokeWeight(1.2);noFill();let pBL=createVector(width*.15,height*.85),pBR=createVector(width*.9,height*.7),pFL=createVector(0,height),pFR=createVector(width,height),pTL=createVector(width*.15,height*.1),pTR=createVector(width*.9,height*.1);quad(pFL.x,pFL.y,pFR.x,pFR.y,pBR.x,pBR.y,pBL.x,pBL.y);quad(pBL.x,pBL.y,pBR.x,pBR.y,pTR.x,pTR.y,pTL.x,pTL.y);quad(0,0,pTL.x,pTL.y,pBL.x,pBL.y,pFL.x,pFL.y);for(let i=0;i<4;i++)for(let j=0;j<4;j++){let x1=lerp(pTL.x,pTR.x,i/4),x2=lerp(pTL.x,pTR.x,(i+1)/4),y1=lerp(pTL.y,pBL.y,j/4),y2=lerp(pTL.y,pBL.y,(j+1)/4);drawPad(x1,y1,x2,y1,x2,y2,x1,y2,pal,breath*.28)}for(let j=0;j<5;j++)for(let i=0;i<5;i++){let tlx=lerp(pBL.x,pFL.x,j/5),tly=lerp(pBL.y,pFL.y,j/5),trx=lerp(pBR.x,pFR.x,j/5),tryy=lerp(pBR.y,pFR.y,j/5),blx=lerp(pBL.x,pFL.x,(j+1)/5),bly=lerp(pBL.y,pFL.y,(j+1)/5),brx=lerp(pBR.x,pFR.x,(j+1)/5),bry=lerp(pBR.y,pFR.y,(j+1)/5);drawPad(lerp(tlx,trx,i/5),lerp(tly,tryy,i/5),lerp(tlx,trx,(i+1)/5),lerp(tly,tryy,(i+1)/5),lerp(blx,brx,(i+1)/5),lerp(bly,bry,(i+1)/5),lerp(blx,brx,i/5),lerp(bly,bry,i/5),pal,breath*.18)}}
+function drawPad(x1,y1,x2,y2,x3,y3,x4,y4,pal,pulse){stroke(...pal.ink,90);noFill();quad(x1,y1,x2,y2,x3,y3,x4,y4);let cx=(x1+x2+x3+x4)/4,cy=(y1+y2+y3+y4)/4,r=4+pulse;ellipse(cx,cy,r*2,r*1.4);line(cx,cy,(x1+x2)/2,(y1+y2)/2);line(cx,cy,(x3+x4)/2,(y3+y4)/2)}
+function drawStaticField(pal){for(let s of scratches){if(random()>MODS.scratches.value+.25)continue;let x=cos(s.a)*s.r,y=sin(s.a)*s.r*1.12;stroke(...pal.ink,110);strokeWeight(s.w);line(x,y,x+cos(s.ang)*s.len,y+sin(s.ang)*s.len)}if(random()<MODS.lightning.value*.55+storm*.05){for(let k=0;k<floor(2+MODS.lightning.value*7+storm);k++)bolt(random()<.5?-1:1,pal)}}
+function bolt(side,pal){let x=side*random(165,245),y=random(-175,170),ex=side*random(250,320),ey=y+random(-90,90),lx=x,ly=y;stroke(...pal.ink);strokeWeight(random(1.2,3));for(let i=1;i<=6;i++){let t=i/6,nx=lerp(x,ex,t)+(i<6?random(-13,13):0),ny=lerp(y,ey,t)+(i<6?random(-13,13):0);line(lx,ly,nx,ny);lx=nx;ly=ny}}
+function drawCharacter(pal){push();let j=MODS.faceJitter.value+shock*.1;translate(random(-j,j),random(-j,j));if(invertFlash>0){let temp=pal;pal={...temp,ink:temp.bg,bg:temp.ink}}drawHearts(pal);drawHat(pal);drawFace(pal);drawBeard(pal);pop()}
+function drawHat(pal){stroke(...pal.ink);noFill();strokeWeight(6);beginShape();vertex(-170,8);vertex(-112,-7);vertex(0,2);vertex(112,-7);vertex(175,8);vertex(125,34);vertex(0,43);vertex(-125,34);endShape(CLOSE);beginShape();vertex(-108,-6);vertex(-122,-190);vertex(-85,-215);vertex(0,-225);vertex(88,-212);vertex(120,-192);vertex(105,-8);endShape(CLOSE);strokeWeight(5);line(-114,-102,112,-102);line(-112,-87,110,-87);for(let x=-96;x<=96;x+=10){strokeWeight(random(1,2.4));line(x+random(-3,3),-195,x+random(-4,4),-18)}}
+function drawFace(pal){stroke(...pal.ink);noFill();strokeWeight(4);beginShape();vertex(-110,25);vertex(-100,88);vertex(-58,130);vertex(0,148);vertex(62,128);vertex(104,84);vertex(110,23);endShape();line(0,62,-22,126);line(0,62,27,126);drawEye(-55,60,pal);drawEye(58,58,pal)}
+function drawEye(x,y,pal){stroke(...pal.ink);strokeWeight(4);noFill();arc(x,y,68,45,PI,TWO_PI);line(x-32,y+6,x+34,y+6);let ang=AUDIO_SOURCE==='auto'?sin(frameCount*.02+x)*.7:atan2(mouseY-height*.48-y,mouseX-width*.5-x),px=x+cos(ang)*8,py=y+sin(ang)*6;fill(...pal.ink);noStroke();ellipse(px,py,17)}
+function drawHearts(pal){for(let h of hearts){push();translate(h[0],h[1]);let s=h[2]*MODS.heartPulse.value*(1+heartBurst*.05);stroke(...pal.ink);noFill();strokeWeight(2.5);for(let k=0;k<3;k++){beginShape();for(let i=0;i<=42;i++){let t=map(i,0,42,0,TWO_PI),hx=16*pow(sin(t),3),hy=-(13*cos(t)-5*cos(2*t)-2*cos(3*t)-cos(4*t));vertex(hx*s*.03+random(-1.5,1.5),hy*s*.03+random(-1.5,1.5))}endShape()}pop()}}
+function drawBeard(pal){stroke(...pal.ink);noFill();let push=MODS.beardPush.value+shock*3,writhe=MODS.hairWrithe.value;for(let h of hairs){let dx=h.bx===0?0:(h.bx>0?1:-1)*push,tx=h.tx+dx+sin(frameCount*.025+h.seed)*writhe,ty=h.ty+cos(frameCount*.018+h.seed)*writhe*.25;strokeWeight(random(1,2.4));beginShape();vertex(h.bx,h.by);vertex(lerp(h.bx,tx,.5)+sin(h.seed)*4,lerp(h.by,ty,.5));vertex(tx,ty);endShape()}}
+function addRipple(){ripples.push({x:random(width*.2,width*.8),y:random(height*.58,height*.88),r:10,a:190});if(ripples.length>12)ripples.shift()}
+function drawRipples(pal){for(let i=ripples.length-1;i>=0;i--){let r=ripples[i];r.r+=3.2;r.a-=4.2;stroke(...pal.ink,r.a);strokeWeight(1.5);noFill();ellipse(r.x,r.y,r.r*2,r.r*.75);if(r.a<=0)ripples.splice(i,1)}}
+function trigger(name){lastControl=Date.now();if(name==='shock'){shock=12;staticEnergy=40}if(name==='storm')storm=12;if(name==='hearts')heartBurst=6;if(name==='ripple'){roomPulse=20;for(let i=0;i<3;i++)addRipple()}if(name==='invert')invertFlash=12;if(name==='reset')buildScene()}
+function cyclePalette(){lastControl=Date.now();paletteIndex=(paletteIndex+1)%PALETTES.length;paletteBtn.textContent='P '+PALETTES[paletteIndex].name}
+function toggleAuto(){AUTO_CRUISE=!AUTO_CRUISE;autoBtn.classList.toggle('hot',AUTO_CRUISE);if(AUTO_CRUISE)lastControl=0}
+function toggleFreeze(){FROZEN=!FROZEN;freezeBtn.classList.toggle('hot',FROZEN);if(FROZEN)noLoop();else loop()}
+function togglePanel(){SHOW_PANEL=!SHOW_PANEL;panel.style.display=SHOW_PANEL?'block':'none'}
+function runAuto(){if(!started||!AUTO_CRUISE)return;let idle=!lastControl||Date.now()-lastControl>18000;if(!idle)return;if(millis()-lastAuto>4200+random(5200)){lastAuto=millis();trigger(random(['shock','storm','hearts','ripple','invert']));if(random()<.18)cyclePalette()}}
+function buildPanel(){let html='<h2>TOP HAT // MOD BAY</h2><div class="slot"><h3>GLOBAL</h3>'+rangeRow('SENSITIVITY',SENSITIVITY,.2,3,.05,'global')+rangeRow('MIC GAIN',MIC_GAIN,.2,8,.1,'micGain')+'<div class="mini"><button id="normBtn">NORMALIZE: ON</button><button id="densBtn">DENSITY: 2</button></div></div>';for(let [k,m] of Object.entries(MODS)){html+=`<div class="slot" data-mod="${k}"><h3>${m.name}</h3><div class="row"><label>band</label><select data-prop="band">${BANDS.map(b=>`<option ${b===m.band?'selected':''}>${b}</option>`).join('')}</select></div>${rangeRow('min',m.min,0,m.name==='heart pulse'?2:80,.01,'min')}${rangeRow('max',m.max,0,m.name==='heart pulse'?2:80,.01,'max')}${rangeRow('curve',m.curve,.25,3,.05,'curve')}${rangeRow('attack',m.attack,.02,1,.01,'attack')}${rangeRow('release',m.release,.01,.7,.01,'release')}</div>`}panel.innerHTML=html;panel.querySelectorAll('[data-mod]').forEach(slot=>slot.querySelectorAll('input,select').forEach(c=>c.oninput=()=>{let m=MODS[slot.dataset.mod],p=c.dataset.prop;m[p]=p==='band'?c.value:Number(c.value);let out=c.parentElement.querySelector('.value');if(out)out.textContent=fmt(c.value)}));panel.querySelectorAll('[data-global]').forEach(c=>c.oninput=()=>{SENSITIVITY=Number(c.value);c.nextElementSibling.textContent=fmt(c.value)});panel.querySelectorAll('[data-micGain]').forEach(c=>c.oninput=()=>{MIC_GAIN=Number(c.value);if(micGainNode)micGainNode.gain.value=MIC_GAIN;c.nextElementSibling.textContent=fmt(c.value)});normBtn.onclick=()=>{NORMALIZE=!NORMALIZE;normBtn.textContent='NORMALIZE: '+(NORMALIZE?'ON':'OFF')};densBtn.onclick=()=>{DENSITY=DENSITY%3+1;densBtn.textContent='DENSITY: '+DENSITY;buildScene()}}
+function rangeRow(label,val,min,max,step,kind){return `<div class="row"><label>${label}</label><input type="range" data-${kind} data-prop="${label.toLowerCase()}" min="${min}" max="${max}" step="${step}" value="${val}"><span class="value">${fmt(val)}</span></div>`}
+function fmt(v){return Number(v).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}
+function drawHUD(){if(!SHOW_HUD){hud.textContent='';return}let meter=b=>String(round(nrm[b]*99)).padStart(2,'0');hud.textContent=`TOP HAT LOVE STATIC // ${AUDIO_SOURCE.toUpperCase()} // ${PALETTES[paletteIndex].name}\nsub:${meter('sub')} bas:${meter('bass')} lm:${meter('lowMid')} mid:${meter('mid')} hi:${meter('high')} air:${meter('air')}\nsens:${SENSITIVITY.toFixed(2)} norm:${NORMALIZE?'on':'off'} auto:${AUTO_CRUISE?'on':'off'} fps:${frameRate().toFixed(0)}\nQ shock · W storm · E hearts · R ripple · T invert · P palette · A auto · S mods · SPACE freeze · 0 HUD · F full`}
+function keyPressed(){let k=key.toLowerCase();lastControl=Date.now();if(k==='q')trigger('shock');if(k==='w')trigger('storm');if(k==='e')trigger('hearts');if(k==='r')trigger('ripple');if(k==='t')trigger('invert');if(k==='p')cyclePalette();if(k==='a')toggleAuto();if(k==='s')togglePanel();if(k==='0')SHOW_HUD=!SHOW_HUD;if(k==='f')fullscreen(!fullscreen());if(k===' ')toggleFreeze();if(key==='+'||key==='=')SENSITIVITY=min(3,SENSITIVITY+.1);if(key==='-'||key==='_')SENSITIVITY=max(.2,SENSITIVITY-.1);return false}
+function mouseMoved(){if(started){staticEnergy=min(40,staticEnergy+2);lastControl=Date.now()}}
+function touchMoved(){mouseMoved();return false}
+function mousePressed(){if(started&&!SHOW_PANEL&&mouseY<height-80)trigger('shock')}
+function windowResized(){resizeCanvas(windowWidth,windowHeight);buildScene()}
+</script>
+</body>
+</html>
