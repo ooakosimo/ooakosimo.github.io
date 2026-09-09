@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Art Angel / Art Demon</title>
+<meta name="description" content="Art Angel / Art Demon. A dual-state HTML ritual by ooakosimo.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Art Angel / Art Demon">
+<meta property="og:description" content="Every mode has its counterpart. Calm and chaos coexist.">
+<meta property="og:image" content="https://ooakosimo.github.io/dualstate/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Art Angel / Art Demon">
+<meta name="twitter:description" content="A dual-state HTML ritual by ooakosimo.">
+<meta name="twitter:image" content="https://ooakosimo.github.io/dualstate/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='32' height='64' fill='%23e2ddd3'/%3E%3Crect x='32' width='32' height='64' fill='%23060606'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23c91818' stroke-width='4'/%3E%3C/svg%3E">
+<style>
+:root{--bone:#e2ddd3;--black:#070707;--red:#c91818;--ink:#282622}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#070707;font-family:"Courier New",Courier,monospace;touch-action:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#cinema,#credits{
+  position:fixed;inset:0;z-index:20;display:grid;place-items:center;
+  background:#070707;color:#f1ece3;text-align:center;overflow:hidden
+}
+#cinema.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .9s ease,visibility .9s ease}
+#cinemaFrame,#creditsFrame{
+  width:min(92vw,950px);padding:24px;display:grid;place-items:center;
+}
+.cineText{
+  font-size:clamp(28px,8vw,82px);line-height:.95;letter-spacing:.04em;font-weight:700;
+  opacity:0;transform:scale(.9);transition:opacity 1s ease,transform 1.2s cubic-bezier(.2,.7,.1,1);
+  max-width:92vw
+}
+.cineText.small{font-size:clamp(20px,5vw,44px);line-height:1.12;font-weight:400}
+.cineText.red{color:#d92b2b;text-shadow:0 0 30px rgba(200,20,20,.2)}
+.cineText.show{opacity:1;transform:scale(1)}
+.cineText.out{opacity:0;transform:scale(1.09)}
+#enter{
+  opacity:0;pointer-events:none;margin-top:30px;padding:14px 28px;min-width:220px;
+  border:1px solid rgba(255,255,255,.75);background:transparent;color:#f1ece3;
+  letter-spacing:.22em;font:inherit;transition:opacity .8s ease,background .2s ease
+}
+#enter.show{opacity:1;pointer-events:auto}
+#enter:active{background:rgba(255,255,255,.08)}
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none;opacity:0;transition:opacity .8s ease}
+#hud.show{opacity:1}
+.hud{
+  position:absolute;top:max(12px,env(safe-area-inset-top));padding:7px 9px;border:1px solid currentColor;
+  background:rgba(0,0,0,.14);backdrop-filter:blur(6px);font-size:10px;letter-spacing:.08em
+}
+#mode{left:max(12px,env(safe-area-inset-left))}
+#infoBtn{right:52px;pointer-events:auto}
+#exitBtn{right:max(12px,env(safe-area-inset-right));pointer-events:auto}
+#hint{
+  position:absolute;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);
+  font-size:9px;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap;transition:opacity 1.8s ease
+}
+#info{
+  position:fixed;inset:0;z-index:30;display:none;place-items:center;padding:20px;background:rgba(0,0,0,.58);backdrop-filter:blur(8px)
+}
+#info.open{display:grid}
+.panel{width:min(92vw,520px);padding:24px;border:1px solid rgba(255,255,255,.5);background:rgba(7,7,7,.9);color:#eee9df;font-size:12px;line-height:1.6}
+.panel .red{color:#e43a34}
+#closeInfo{display:inline-block;margin-top:18px;padding:7px 10px;border:1px solid currentColor}
+#credits{opacity:0;visibility:hidden;transition:opacity 1.2s ease,visibility 1.2s ease}
+#credits.show{opacity:1;visibility:visible}
+@media(max-width:640px){
+  .cineText{font-size:clamp(25px,10vw,46px)}
+  .cineText.small{font-size:clamp(18px,6vw,26px)}
+}
+
+#cineText.layout-stack{
+  white-space:pre-line;
+  font-size:clamp(30px,8vw,78px);
+  line-height:1.08;
+  letter-spacing:.045em;
+}
+#cineText.layout-stack .cross{
+  display:block;
+  font-size:.48em;
+  line-height:1.8;
+  color:#9a9389;
+  letter-spacing:.25em;
+}
+#cineText.layout-dual{
+  white-space:pre-line;
+  font-size:clamp(34px,9vw,86px);
+  line-height:.95;
+  letter-spacing:.06em;
+}
+#cineText.layout-dual .ritual-line{
+  display:block;
+  margin-top:.18em;
+}
+#enter.final-enter{
+  margin-top:18px;
+}
+
+</style>
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<div id="cinema">
+  <div id="cinemaFrame">
+    <div id="cineText" class="cineText">ART ANGEL</div>
+    <button id="enter">ENTER RITUAL</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div id="mode" class="hud">MODE: ART ANGEL</div>
+  <div id="infoBtn" class="hud">i</div>
+  <div id="exitBtn" class="hud">x</div>
+  <div id="hint">tap anywhere to shift states</div>
+</div>
+
+<div id="info">
+  <div class="panel">
+    ART ANGEL / ART DEMON<br>
+    A DUAL-STATE HTML RITUAL<br><br>
+    Tap anywhere to shift states.<br>
+    One system, two necessary states.<br><br>
+    <span class="red">GLITCH MEMORY</span> accumulates in Demon.<br>
+    Angel softens it, but the session remembers.<br><br>
+    Original state: 2025<br>
+    Reworked state: 2026<br><br>
+    <span id="closeInfo">CLOSE</span>
+  </div>
+</div>
+
+<div id="credits">
+  <div id="creditsFrame">
+    <div id="creditsText" class="cineText">GOODBYE</div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const canvas=document.getElementById("world"), ctx=canvas.getContext("2d",{alpha:false});
+const cinema=document.getElementById("cinema"), cineText=document.getElementById("cineText"), enter=document.getElementById("enter");
+const hud=document.getElementById("hud"), modeEl=document.getElementById("mode"), hint=document.getElementById("hint");
+const info=document.getElementById("info"), infoBtn=document.getElementById("infoBtn"), closeInfo=document.getElementById("closeInfo"), exitBtn=document.getElementById("exitBtn");
+const credits=document.getElementById("credits"), creditsText=document.getElementById("creditsText");
+
+let W=innerWidth,H=innerHeight,DPR=1,last=performance.now(),t=0,started=false,ending=false;
+let mode="angel",blend=0,contamination=0,enteredDemon=false,pointer={x:W/2,y:H/2,active:false};
+const tribes=[[],[],[]], clouds=[], membranes=[], scribblers=[], scars=[], blocks=[], geom=[];
+let audio=null;
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,n)=>a+(b-a)*n, rand=(a,b)=>a+Math.random()*(b-a);
+
+function resize(){
+  W=innerWidth;H=innerHeight;DPR=Math.min(2,devicePixelRatio||1);
+  canvas.width=Math.max(1,Math.floor(W*DPR));canvas.height=Math.max(1,Math.floor(H*DPR));
+  canvas.style.width=W+"px";canvas.style.height=H+"px";ctx.setTransform(DPR,0,0,DPR,0,0);
+  populate();
+}
+function populate(){
+  tribes.forEach(a=>a.length=0);clouds.length=0;membranes.length=0;geom.length=0;
+  const area=clamp((W*H)/(1440*900),.45,1.25);
+  const counts=[Math.floor(16*area),Math.floor(13*area),Math.floor(10*area)];
+  for(let k=0;k<3;k++) for(let i=0;i<counts[k];i++) tribes[k].push(makeBoid(k));
+  for(let i=0;i<9;i++) clouds.push(makeCloud(i%3));
+  for(let i=0;i<3;i++) membranes.push({phase:rand(0,10),speed:rand(.05,.12),amp:rand(.03,.08),offset:(i+1)/4});
+  for(let i=0;i<4;i++) geom.push({phase:rand(0,Math.PI*2),speed:rand(.08,.18),rings:Math.floor(rand(2,5))});
+  if(!scribblers.length) for(let i=0;i<7;i++) scribblers.push(makeScribbler());
+}
+function makeBoid(tribe){
+  return {x:rand(0,W),y:rand(0,H),vx:rand(-.5,.5),vy:rand(-.5,.5),tribe,phase:rand(0,Math.PI*2),z:rand(.45,1.2)};
+}
+function makeCloud(layer){
+  const specs=[{s:[.03,.09],r:[.09,.15],a:[.035,.055]},{s:[.16,.32],r:[.13,.21],a:[.045,.075]},{s:[.55,1.0],r:[.18,.28],a:[.06,.09]}][layer];
+  return {layer,x:rand(0,W),y:rand(0,H*.85),speed:rand(...specs.s),r:Math.min(W,H)*rand(...specs.r),a:rand(...specs.a),phase:rand(0,6.28)};
+}
+function makeScribbler(){
+  return {x:rand(0,W),y:rand(0,H),vx:0,vy:0,tx:rand(0,W),ty:rand(0,H),pressure:rand(.3,1),rage:rand(.4,1.4),phase:rand(0,6.28),life:rand(250,800)};
+}
+function field(x,y,s,tt){
+  return Math.sin(x*.0028+s+tt*.34)+Math.sin(y*.0035-s*.5-tt*.27)+Math.sin((x+y)*.0016+s*.7+tt*.19);
+}
+function boidStep(b,all,dt){
+  // Ascending luminous spirits.
+  // They are not flocking tightly anymore. Each depth layer follows a huge atmospheric current.
+  const ph=[0,2.35,4.7][b.tribe];
+  const depth=[1.0,.72,.48][b.tribe];
+
+  const driftX =
+    Math.sin(t*.11 + b.phase + ph)*0.42 +
+    Math.sin(t*.041 + ph)*0.28;
+
+  const driftY =
+    -0.56 -
+    0.16*Math.sin(t*.17 + b.phase);
+
+  // Huge field bend so they feel like they're travelling through a vast space.
+  const curve =
+    Math.sin((b.y/H)*Math.PI*1.4 + t*.08 + ph) * 0.35;
+
+  let vxTarget=(driftX + curve)*depth;
+  let vyTarget=driftY*depth;
+
+  // Pointer slightly bends the atmosphere rather than attracting individual spirits.
+  if(pointer.active){
+    const px=(pointer.x-W*.5)/Math.max(W,1);
+    const py=(pointer.y-H*.5)/Math.max(H,1);
+    vxTarget += px*.14*depth;
+    vyTarget += py*.05*depth;
+  }
+
+  b.vx=lerp(b.vx,vxTarget,.018);
+  b.vy=lerp(b.vy,vyTarget,.018);
+
+  const swell=.85+.25*(.5+.5*Math.sin(t*.23+b.phase));
+  b.x+=b.vx*dt*60*swell;
+  b.y+=b.vy*dt*60*swell;
+
+  // reset from below, like the original upward angel particles
+  if(b.y<-100){
+    b.y=H+rand(40,180);
+    b.x=rand(-W*.08,W*1.08);
+    b.phase=rand(0,Math.PI*2);
+    b.z=rand(.45,1.2);
+  }
+  if(b.x<-150)b.x=W+100;
+  if(b.x>W+150)b.x=-100;
+}
+function drawAngel(dt){
+  // soft bone background + glow
+  ctx.fillStyle="rgba(226,221,211,.18)";ctx.fillRect(0,0,W,H);
+  const gx=W*(.5+.10*Math.sin(t*.11)),gy=H*(.5+.08*Math.cos(t*.09));
+  const grad=ctx.createRadialGradient(gx,gy,0,gx,gy,Math.min(W,H)*.42);
+  grad.addColorStop(0,"rgba(255,250,240,.13)");grad.addColorStop(1,"rgba(255,250,240,0)");
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+
+  // clouds in depth layers
+  clouds.sort((a,b)=>a.layer-b.layer);
+  for(const c of clouds){
+    c.x-=c.speed*dt*60;c.y+=Math.sin(t*.15+c.phase)*.02;
+    if(c.x<-c.r*2)c.x=W+c.r*2;
+    ctx.fillStyle=`rgba(255,252,245,${c.a*(1-blend)})`;
+    for(let i=0;i<5;i++){
+      const ang=i*1.7+c.phase, rr=c.r*(.35+.13*i);
+      ctx.beginPath();ctx.ellipse(c.x+Math.cos(ang)*c.r*.34,c.y+Math.sin(ang)*c.r*.15,rr,rr*.62,0,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  // perlin-like membranes
+  ctx.save();ctx.globalCompositeOperation="screen";
+  for(let k=0;k<membranes.length;k++){
+    const m=membranes[k];ctx.beginPath();
+    for(let x=-20;x<=W+20;x+=12){
+      const y=H*m.offset + Math.sin(x*.006 + t*m.speed + m.phase)*H*m.amp + Math.sin(x*.013 - t*m.speed*.6+m.phase*.4)*H*m.amp*.35;
+      if(x<0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=`rgba(255,255,250,${.07+.02*k})`;ctx.lineWidth=1.2+k*.35;ctx.stroke();
+  }
+  ctx.restore();
+
+  // symmetry apparitions
+  ctx.save();ctx.translate(W/2,H/2);
+  for(const g of geom){
+    const a=.028*(1-blend)*(0.5+0.5*Math.sin(t*g.speed+g.phase));
+    ctx.strokeStyle=`rgba(70,68,63,${a})`;ctx.lineWidth=.8;
+    for(let r=1;r<=g.rings;r++){
+      const rad=Math.min(W,H)*(.07*r + .015*Math.sin(t*.21+g.phase+r));
+      ctx.beginPath();
+      for(let i=0;i<8;i++){
+        const ang=i*Math.PI/4+t*.03*(r%2?1:-1), x=Math.cos(ang)*rad,y=Math.sin(ang)*rad;
+        if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath();ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // tribes
+  const spiritCore=[
+    "rgba(255,253,247,.80)",
+    "rgba(246,242,234,.62)",
+    "rgba(218,213,203,.42)"
+  ];
+
+  for(let k=0;k<3;k++){
+    for(const b of tribes[k]){
+      const ox=b.x,oy=b.y;
+      boidStep(b,tribes[k],dt);
+
+      // Long feathered luminous trail, narrow at the core, no big round head.
+      const trail=38+b.z*88;
+      const mag=Math.hypot(b.vx,b.vy)||1;
+      const tx=b.x-(b.vx/mag)*trail;
+      const ty=b.y-(b.vy/mag)*trail;
+
+      const g=ctx.createLinearGradient(tx,ty,b.x,b.y);
+      g.addColorStop(0,"rgba(255,252,245,0)");
+      g.addColorStop(.55, k===0 ? "rgba(255,252,245,.10)" : "rgba(240,236,228,.07)");
+      g.addColorStop(1,spiritCore[k]);
+
+      ctx.beginPath();
+      ctx.moveTo(tx,ty);
+      ctx.quadraticCurveTo(
+        (tx+b.x)*.5 + Math.sin(t*.28+b.phase)*9,
+        (ty+b.y)*.5 + Math.cos(t*.24+b.phase)*7,
+        b.x,b.y
+      );
+      ctx.strokeStyle=g;
+      ctx.lineWidth=.7+b.z*1.55;
+      ctx.stroke();
+
+      // tiny luminous seed rather than a round creature head
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,.75+b.z*.8,0,Math.PI*2);
+      ctx.fillStyle=spiritCore[k];
+      ctx.fill();
+
+      // diffuse aura
+      const halo=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,10+b.z*10);
+      halo.addColorStop(0,"rgba(255,252,244,.06)");
+      halo.addColorStop(1,"rgba(255,252,244,0)");
+      ctx.fillStyle=halo;
+      ctx.fillRect(b.x-22,b.y-22,44,44);
+    }
+  }
+}
+function stepScribbler(s,dt){
+  s.life-=dt*60;
+  if(s.life<0 || Math.hypot(s.tx-s.x,s.ty-s.y)<25){
+    s.tx=rand(0,W);s.ty=rand(0,H);s.life=rand(250,800);s.pressure=rand(.25,1);s.rage=rand(.5,1.6);
+  }
+  const dx=s.tx-s.x,dy=s.ty-s.y,d=Math.hypot(dx,dy)||1;
+  let ang=Math.atan2(dy,dx) + Math.sin(t*5*s.rage+s.phase)*.55 + rand(-.14,.14)*s.rage;
+  let sp=rand(1.2,4.8)*s.rage*(.6+s.pressure);
+  if(Math.random()<.01)s.tx=s.x+rand(-80,80),s.ty=s.y+rand(-80,80); // obsessive knot
+  s.vx=lerp(s.vx,Math.cos(ang)*sp,.18);s.vy=lerp(s.vy,Math.sin(ang)*sp,.18);
+  const px=s.x,py=s.y;s.x+=s.vx*dt*60;s.y+=s.vy*dt*60;
+  const width=.35 + s.pressure*3.8 + Math.abs(Math.sin(t*2+s.phase))*1.4;
+  ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(s.x,s.y);
+  ctx.strokeStyle=`rgba(${Math.floor(rand(130,230))},0,0,${.22+.22*s.pressure})`;
+  ctx.lineWidth=width;ctx.stroke();
+
+  // pressure digs deeper with repeated micro-scribbles
+  if(Math.random()<.12*s.rage){
+    ctx.beginPath();ctx.moveTo(s.x,s.y);
+    ctx.lineTo(s.x+rand(-10,10)*s.rage,s.y+rand(-10,10)*s.rage);
+    ctx.strokeStyle=`rgba(100,0,0,${.18+.22*s.pressure})`;ctx.lineWidth=width*rand(.5,1.8);ctx.stroke();
+  }
+}
+function violentEvent(){
+  const y=rand(H*.08,H*.92),a=rand(-.4,.4);
+  const x1=-W*.1,y1=y,x2=W*1.1,y2=y+Math.tan(a)*W;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle="rgba(255,15,10,.75)";ctx.lineWidth=rand(4,12);ctx.stroke();
+  if(audio) scratchBurst(true);
+}
+function drawDemon(dt){
+  // Keep the deeper hand-scribble layer underneath.
+  ctx.fillStyle="rgba(20,0,0,.10)";
+  ctx.fillRect(0,0,W,H);
+  for(const s of scribblers) stepScribbler(s,dt);
+
+  // ACTUAL OG DEMON DNA from the 2025 piece:
+  // 50 random red lines + 50 random red blocks on every frame.
+  // This is intentionally excessive. It should feel like an attack.
+  ctx.lineWidth=2;
+  for(let i=0;i<50;i++){
+    ctx.beginPath();
+    ctx.moveTo(rand(0,W),rand(0,H));
+    ctx.lineTo(rand(0,W),rand(0,H));
+    ctx.strokeStyle=`rgba(${Math.floor(rand(0,255))},0,0,${rand(50,150)/255})`;
+    ctx.lineWidth=rand(.7,3.8);
+    ctx.stroke();
+
+    ctx.fillStyle=`rgba(${Math.floor(rand(0,255))},0,0,${rand(100,200)/255})`;
+    ctx.fillRect(
+      rand(0,W),rand(0,H),
+      rand(10,40),rand(10,40)
+    );
+  }
+
+  // Add some deeper repeated pen knots on top, because this is the 2026 rework.
+  for(let i=0;i<10;i++){
+    const cx=rand(0,W),cy=rand(0,H);
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    let x=cx,y=cy;
+    const steps=Math.floor(rand(8,22));
+    for(let q=0;q<steps;q++){
+      x+=rand(-22,22);
+      y+=rand(-22,22);
+      ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=`rgba(${Math.floor(rand(110,245))},0,0,${rand(.18,.46)})`;
+    ctx.lineWidth=rand(.8,5.5);
+    ctx.stroke();
+  }
+
+  // Rare huge emotional slash.
+  if(Math.random()<.01) violentEvent();
+
+  if(contamination>.10){
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font=`${clamp(W*.027,14,26)}px "Courier New",monospace`;
+    const flicker=Math.random()>.18?1:.2;
+    ctx.fillStyle=`rgba(245,238,228,${(.045+.18*blend)*flicker})`;
+    ctx.fillText("GLITCH MEMORY ACTIVE",W/2,H/2);
+  }
+}
+function drawResidue(){
+  const r=contamination*(1-blend);if(r<=.01)return;
+  if(Math.random()<r*.12){
+    ctx.beginPath();const x=rand(0,W),y=rand(0,H);ctx.moveTo(x,y);ctx.lineTo(x+rand(-120,120),y+rand(-20,20));
+    ctx.strokeStyle=`rgba(130,5,5,${.05+r*.22})`;ctx.lineWidth=rand(.4,1.8);ctx.stroke();
+  }
+}
+function drawWorld(dt){
+  const target=mode==="demon"?1:0;blend += (target-blend)*(1-Math.pow(.0008,dt));
+  if(mode==="demon"){contamination=Math.min(1,contamination+dt*.028);enteredDemon=true}
+  else if(enteredDemon) contamination=Math.max(.06,contamination*Math.pow(.988,dt));
+
+  const bg=[Math.round(lerp(226,7,blend)),Math.round(lerp(221,7,blend)),Math.round(lerp(211,7,blend))];
+  ctx.fillStyle=`rgba(${bg[0]},${bg[1]},${bg[2]},${lerp(.06,.18,blend)})`;ctx.fillRect(0,0,W,H);
+
+  if(blend<.98) drawAngel(dt);
+  if(blend>.02) drawDemon(dt);
+  drawResidue();
+  const c=blend<.5?"rgba(35,33,30,.9)":"rgba(240,235,226,.92)";
+  [modeEl,infoBtn,exitBtn,hint].forEach(el=>el.style.color=c);
+  modeEl.textContent="MODE: ART "+(mode==="angel"?"ANGEL":"DEMON");
+}
+
+function initAudio(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    const ac=new AC(), master=ac.createGain();master.gain.value=.34;master.connect(ac.destination);
+    const filter=ac.createBiquadFilter();filter.type="lowpass";filter.frequency.value=900;filter.connect(master);
+    const osc=ac.createOscillator();osc.type="sine";osc.frequency.value=55;
+    const og=ac.createGain();og.gain.value=.03;osc.connect(og);og.connect(filter);osc.start();
+    audio={ac,master,filter,osc,og,lastBell:0,lastScratch:0}; if(ac.state==="suspended")ac.resume();
+  }catch(e){}
+}
+function bell(){
+  if(!audio)return;const {ac,master}=audio,now=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.frequency.value=[220,247,294,330,392][Math.floor(Math.random()*5)];o.type="sine";
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.03,now+.02);g.gain.exponentialRampToValueAtTime(.0001,now+1.8);
+  o.connect(g);g.connect(master);o.start(now);o.stop(now+1.9);
+}
+function scratchBurst(big=false){
+  if(!audio)return;const {ac,master}=audio, len=Math.floor(ac.sampleRate*(big?.28:.08)),buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  const src=ac.createBufferSource();src.buffer=buf;const f=ac.createBiquadFilter();f.type="bandpass";f.frequency.value=rand(big?80:180,big?700:1500);f.Q.value=rand(.5,2);
+  const g=ac.createGain();g.gain.value=big?.12:rand(.025,.06);src.connect(f);f.connect(g);g.connect(master);src.start();
+}
+function updateAudio(){
+  if(!audio)return;const now=audio.ac.currentTime;
+  audio.filter.frequency.setTargetAtTime(mode==="angel"?900:430,now,mode==="angel"?.6:.08);
+  audio.osc.frequency.setTargetAtTime(mode==="angel"?55:58.27,now,.4);
+  audio.og.gain.setTargetAtTime(mode==="angel"?.02:.11,now,.14);
+  if(mode==="angel" && now-audio.lastBell>rand(2.7,5.2)){bell();audio.lastBell=now}
+  if(mode==="demon" && now-audio.lastScratch>rand(.035,.11)){scratchBurst(Math.random()<.22);audio.lastScratch=now}
+}
+
+let introIndex=0;
+
+function setCineHTML(html, className=""){
+  cineText.className="cineText "+className;
+  cineText.innerHTML=html;
+}
+
+function showCine(hold=2600, next=null){
+  setTimeout(()=>{
+    requestAnimationFrame(()=>cineText.classList.add("show"));
+  },700);
+
+  setTimeout(()=>{
+    cineText.classList.add("out");
+    setTimeout(()=>{
+      cineText.classList.remove("show","out");
+      if(next) setTimeout(next,850);
+    },1150);
+  },700+hold);
+}
+
+function playIntro(){
+  // 1. ART ANGEL x ART DEMON as one centered composition
+  setCineHTML(
+    'ART ANGEL<span class="cross">x</span><span style="color:#d92b2b">ART DEMON</span>',
+    'layout-stack'
+  );
+  showCine(3300, ()=>{
+
+    // 2. COEXIST
+    setCineHTML('COEXIST',"");
+    showCine(2800, ()=>{
+
+      // 3. DUAL-STATE / RITUAL. This stays while ENTER appears.
+      setCineHTML(
+        'DUAL-STATE<span class="ritual-line">RITUAL</span>',
+        'layout-dual'
+      );
+
+      setTimeout(()=>{
+        requestAnimationFrame(()=>cineText.classList.add("show"));
+      },700);
+
+      setTimeout(()=>{
+        enter.textContent="ENTER";
+        enter.classList.add("show","final-enter");
+      },2200);
+    });
+  });
+}
+function startRitual(e){
+  e.preventDefault();e.stopPropagation();initAudio();started=true;cinema.classList.add("hidden");hud.classList.add("show");
+  ctx.fillStyle="#e2ddd3";ctx.fillRect(0,0,W,H);setTimeout(()=>hint.style.opacity="0",9000);
+}
+function shift(){if(!started||ending||info.classList.contains("open"))return;mode=mode==="angel"?"demon":"angel"}
+function playCredits(){
+  ending=true;hud.classList.remove("show");credits.classList.add("show");
+  const seq=[["GOODBYE",""],["SEE YOU","small"],["NEXT SHIFT","red"]];
+  let i=0;
+  function next(){
+    creditsText.className="cineText "+seq[i][1];creditsText.textContent=seq[i][0];
+    requestAnimationFrame(()=>creditsText.classList.add("show"));
+    setTimeout(()=>{
+      creditsText.classList.add("out");
+      setTimeout(()=>{creditsText.classList.remove("show","out");i++;if(i<seq.length)next()},850);
+    },1300);
+  }
+  next();
+  if(audio){const now=audio.ac.currentTime;audio.master.gain.setTargetAtTime(.0001,now,.55)}
+}
+function frame(now){
+  const dt=Math.min(.033,(now-last)/1000||.016);last=now;t+=dt;
+  if(!started){
+    ctx.fillStyle="#070707";ctx.fillRect(0,0,W,H);
+  }else if(!ending){
+    drawWorld(dt);updateAudio();
+  }
+  requestAnimationFrame(frame);
+}
+
+enter.addEventListener("pointerup",startRitual);
+canvas.addEventListener("pointerup",e=>{if(e.pointerType==="touch")e.preventDefault();shift()});
+canvas.addEventListener("pointermove",e=>{pointer.x=e.clientX;pointer.y=e.clientY;pointer.active=true},{passive:true});
+canvas.addEventListener("pointerleave",()=>pointer.active=false);
+infoBtn.addEventListener("pointerup",e=>{e.stopPropagation();info.classList.add("open")});
+closeInfo.addEventListener("pointerup",e=>{e.stopPropagation();info.classList.remove("open")});
+info.addEventListener("pointerup",e=>{if(e.target===info)info.classList.remove("open")});
+exitBtn.addEventListener("pointerup",e=>{e.stopPropagation();playCredits()});
+window.addEventListener("resize",resize,{passive:true});
+
+resize();playIntro();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
