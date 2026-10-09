@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dirty Kitchen (Enter the Refrigerator)</title>
+<title>Dirty Kitchen v5</title>
 <link rel="icon" href="/gumamela.gif" type="image/gif">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&family=Mr+Dafoe&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -38,6 +38,14 @@ button:disabled{opacity:.35; cursor:default}
 .pad .row2{grid-row:2}
 .load{position:fixed; inset:0; display:grid; place-items:center; background:#140a24; color:var(--pink); font-family:"Mr Dafoe",cursive; font-size:40px; transition:opacity .8s}
 .load.done{opacity:0; pointer-events:none}
+.msgs{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); right:10px; width:min(330px, calc(100vw - 20px)); max-height:45vh; overflow:auto; display:flex; flex-direction:column; gap:6px; z-index:5}
+.msg{display:flex; gap:8px; align-items:flex-start; background:var(--panel); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,90,90,.55); border-radius:10px; padding:7px 8px 7px 11px; font-size:12px; line-height:1.4}
+.msg b{color:#ff8a8a}
+.msg small{display:block; color:var(--muted); word-break:break-all}
+.msg button{padding:2px 7px; font-size:13px; flex:none; margin-left:auto}
+.fade{position:fixed; inset:0; background:#000; opacity:0; pointer-events:none}
+body.clean .hud, body.clean .pad, body.clean .msgs{display:none}
+body.clean canvas{cursor:none}
 @media (prefers-reduced-motion: reduce){ .load{transition:none} }
 </style>
 </head>
@@ -54,6 +62,10 @@ button:disabled{opacity:.35; cursor:default}
       <button id="bWalk" aria-pressed="false">Walk</button>
       <button id="bKitchen">Kitchen</button>
       <button id="bSpeak">Speakeasy</button>
+      <button id="bTour" aria-pressed="false" title="Cinematic tour (T)">Tour</button>
+      <button id="bLoop" aria-pressed="true" title="Loop the tour">Loop</button>
+      <button id="bNums" aria-pressed="false" title="Frame numbers (N)">Frame numbers</button>
+      <button id="bClean" aria-pressed="false" title="Hide all UI for recording (C)">Clean mode</button>
     </div>
   </div>
 </div>
@@ -63,6 +75,8 @@ button:disabled{opacity:.35; cursor:default}
   <button class="row2" data-k="b" aria-label="Back">▼</button>
   <button class="row2" data-k="r" aria-label="Turn right">▶</button>
 </div>
+<div class="msgs" id="msgs" role="status" aria-live="polite"></div>
+<div class="fade" id="fade" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -79,12 +93,13 @@ button:disabled{opacity:.35; cursor:default}
 const SIGN_TEXT = 'Dirty Kitchen';     // neon sign over the mural
 const MARQUEE_TEXT = 'HAT MACHINE';    // arcade cabinet 1
 const MARQUEE_TEXT_2 = 'MD WAS RUDE';  // arcade cabinet 2
-// Your art, hung in order on the frames (left to right, wall by wall). Images (png/jpg/webp) or videos (mp4/webm).
-// Animated GIFs only show their first frame in 3D, so convert them to mp4 for motion. Empty = placeholder cards.
-// Hosting on your GitHub Pages works (it allows cross-origin loading). You can also drag files onto the page to preview.
+// Your art: each entry is [frameNumber, url]. Turn on "Frame numbers" to see which number each frame has.
+// Images (png/jpg/webp) or videos (mp4/webm). Animated GIFs only show their first frame in 3D, so convert them to mp4.
+// The host must allow cross-origin loading (GitHub Pages does). If a link fails, a message on screen says which frame and why.
+// Frames you don't list keep their placeholder cards. You can also drag files onto the page to preview.
 const ART = [
-  // 'https://ooakosimo.github.io/cards/card01.mp4',
-  // 'https://ooakosimo.github.io/cards/card02.png',
+  // [7, 'https://ooakosimo.neocities.org/cards/x.mp4'],
+  // [12, 'https://ooakosimo.github.io/cards/card02.png'],
 ];
 const NEON = { pink: '#ff2fb0', cyan: '#2fe6ff', warm: '#ffb766' };
 
@@ -604,6 +619,88 @@ cyl(0.26, 0.26, 0.025, std('#0b0b10', { roughness: 0.15, metalness: 0.4 }), 2.25
 const candle = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), glow('#ffb35a')); candle.position.set(2.25, 0.44, -5.7); scene.add(candle);
 block(1.6, SX1, SZ0, -4.95);
 
+// ---- cozy corner, front-left: couch, two bean bags, found-hardwood tables on apple crates + a blue water drum
+// (fits in x -1.7..0.21, z -1.65..-0.06: leaves the bar aisle, the lane in front of the billiards and the fridge entrance clear)
+{
+  const hardT = ctex(256, 128, (g, w, h) => {
+    g.fillStyle = '#6b3a1f'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 46; i++) { g.strokeStyle = `rgba(${30 + rnd() * 40},${14 + rnd() * 20},6,${0.3 + rnd() * 0.35})`; g.lineWidth = 1 + rnd() * 2.5; g.beginPath(); const y = rnd() * h; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + (rnd() - .5) * 26, w * 0.7, y + (rnd() - .5) * 26, w, y + (rnd() - .5) * 12); g.stroke(); }
+    g.fillStyle = 'rgba(25,10,4,.7)'; g.beginPath(); g.ellipse(w * 0.62, h * 0.45, 9, 5, 0.2, 0, Math.PI * 2); g.fill();
+  });
+  const hard = std('#ffffff', { map: hardT, roughness: 0.55 }), bark = std('#3a2414', { roughness: 1 });
+  const crateW = std('#c9a26b', { roughness: 0.95 }), crateEnd = std('#b88f58', { roughness: 0.95 });
+  // found-hardwood slab with a rough bark edge on the long sides
+  function slab(x, y, z, w, d, ry = 0) {
+    const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; scene.add(g);
+    boxB(w, 0.03, d, hard, 0, 0, 0, g);
+    boxB(w * 0.96, 0.026, 0.012, bark, 0, 0.002, d / 2 + 0.004, g); boxB(w * 0.9, 0.026, 0.012, bark, 0.01, 0.002, -d / 2 - 0.004, g);
+    return g;
+  }
+  // slatted apple crate, open face toward local +z. onEnd = stood up on its end instead of tipped on its side
+  function appleCrate(x, z, ry, onEnd = false) {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+    const w = 0.26, h = 0.17, d = 0.16, t = 0.01;
+    const c = new THREE.Group(); g.add(c);
+    if (onEnd) { c.rotation.z = Math.PI / 2; c.position.set(h / 2, w / 2, 0); }
+    for (const sx of [-1, 1]) boxB(t * 1.6, h, d, crateEnd, sx * (w / 2 - t * 0.8), 0, 0, c);
+    for (let i = 0; i < 3; i++) {
+      const yy = 0.005 + i * (h - 0.05) / 2;
+      boxB(w - t * 3, 0.04, t, crateW, 0, yy, -d / 2 + t / 2, c);                  // back
+    }
+    for (const sy of [0, h - t]) for (let i = 0; i < 3; i++) boxB(w - t * 3, t, 0.04, crateW, 0, sy, -d / 2 + 0.03 + i * 0.05, c);   // top + bottom
+    boxB(0.11, 0.008, 0.035, std('#d1171f'), -0.02, h * 0.55, d / 2 + 0.001, c).visible = !onEnd;   // stencil-ish label
+    return g;
+  }
+  // couch against the front wall, facing into the room; a banig throw over the back
+  const fabric = std('#1d5c63', { roughness: 0.9 }), fabricD = std('#174a50', { roughness: 0.9 });
+  const CX = -0.8, CZ = -0.34;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) cyl(0.015, 0.012, 0.04, std('#2a1a10'), CX + sx * 0.5, 0, CZ + sz * 0.17, 8);
+  boxB(1.1, 0.12, 0.44, fabricD, CX, 0.04, CZ);
+  boxB(0.46, 0.07, 0.34, fabric, CX - 0.235, 0.16, CZ - 0.04); boxB(0.46, 0.07, 0.34, fabric, CX + 0.235, 0.16, CZ - 0.04);
+  boxB(1.1, 0.3, 0.1, fabric, CX, 0.16, CZ + 0.17);
+  for (const sx of [-1, 1]) boxB(0.08, 0.25, 0.44, fabricD, CX + sx * 0.51, 0.04, CZ);
+  boxB(0.6, 0.004, 0.13, std('#ffffff', { map: banigT, roughness: 0.9 }), CX + 0.12, 0.46, CZ + 0.17);
+  const throwB = plane(0.6, 0.2, std('#ffffff', { map: banigT, roughness: 0.9, side: THREE.DoubleSide }), CX + 0.12, 0.37, CZ + 0.11); throwB.rotation.y = Math.PI;
+  [['#ff4fa8', -0.33, 0.25], ['#ffd23f', 0.36, -0.2]].forEach(([c, dx, rz]) => { const p = boxB(0.15, 0.13, 0.05, std(c, { roughness: 0.9 }), CX + dx, 0.22, CZ + 0.09); p.rotation.set(-0.25, 0, rz); });
+  block(CX - 0.56, CX + 0.56, CZ - 0.23, -0.06);
+  // coffee table: hardwood slab on two apple crates tipped on their sides
+  appleCrate(-1.08, -0.95, Math.PI); appleCrate(-0.52, -0.95, 0);
+  slab(-0.8, 0.17, -0.95, 0.8, 0.3, 0.02);
+  for (let i = 0; i < 3; i++) boxB(0.15, 0.012, 0.05, std(pick(), { roughness: 0.7 }), -1.08, 0.012 + i * 0.013, -0.97).rotation.y = (rnd() - .5) * 0.3;   // records in the crate
+  mug(-0.98, 0.2, -0.9, '#f4f1e6'); mug(-0.6, 0.2, -1.0, '#ff8a3d');
+  boxB(0.12, 0.006, 0.09, std('#2f7bff', { roughness: 0.8 }), -0.78, 0.2, -0.96).rotation.y = 0.3;
+  cyl(0.022, 0.022, 0.04, std('#f4efe2', { roughness: 0.6 }), -0.74, 0.2, -0.88, 12);
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), glow('#ffb35a')); flame.scale.y = 1.6; flame.position.set(-0.74, 0.255, -0.88); scene.add(flame);
+  block(-1.22, -0.38, -1.1, -0.8);
+  // side table left of the couch: one crate on its end, small slab, potted plant
+  appleCrate(-1.56, -0.32, Math.PI, true);
+  slab(-1.56, 0.26, -0.32, 0.3, 0.26, Math.PI / 2);
+  cyl(0.035, 0.028, 0.06, terra, -1.56, 0.29, -0.3, 10);
+  for (let i = 0; i < 4; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), i % 2 ? leafM : leafD); l.position.set(-1.56 + (rnd() - .5) * 0.06, 0.37 + rnd() * 0.05, -0.3 + (rnd() - .5) * 0.06); scene.add(l); }
+  block(-1.71, -1.41, -0.48, -0.06);
+  // drink table right of the couch: hardwood on a blue water drum lying on its side, chocked with scrap wood
+  const drumM = std('#1f5fd1', { roughness: 0.45 });
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.42, 24), drumM); drum.rotation.x = Math.PI / 2; drum.position.set(0.05, 0.145, -0.31); scene.add(drum);
+  for (const dz of [-0.07, 0.07]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.146, 0.007, 6, 28), drumM); r.position.set(0.05, 0.145, -0.31 + dz); scene.add(r); }
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.012, 10), std('#e8e6e0')); cap.rotation.x = Math.PI / 2; cap.position.set(0.1, 0.2, -0.526); scene.add(cap);
+  for (const sx of [-1, 1]) boxB(0.04, 0.035, 0.36, std('#8a6a48'), 0.05 + sx * 0.1, 0, -0.31);
+  slab(0.05, 0.29, -0.31, 0.5, 0.3, Math.PI / 2 + 0.04);
+  mug(0.02, 0.32, -0.38, '#22b573'); cyl(0.018, 0.018, 0.1, std('#2a1408', { roughness: 0.2 }), 0.1, 0.32, -0.22, 8);
+  block(-0.11, 0.21, -0.57, -0.06);
+  // bean bags across the coffee table
+  function beanBag(x, z, c, ry) {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+    const m = std(c, { roughness: 0.95 });
+    const base = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 14), m); base.scale.set(1, 0.55, 1); base.position.y = 0.1; g.add(base);
+    const back = new THREE.Mesh(new THREE.SphereGeometry(0.15, 18, 12), m); back.scale.set(1.15, 1, 0.6); back.position.set(0, 0.18, -0.1); g.add(back);
+    const seam = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.005, 6, 28), std('#000', { transparent: true, opacity: 0.25 })); seam.rotation.x = Math.PI / 2; seam.position.y = 0.1; g.add(seam);
+    block(x - 0.2, x + 0.2, z - 0.2, z + 0.2);
+  }
+  beanBag(-1.36, -1.42, '#d9a21b', 0.35);
+  beanBag(-0.24, -1.42, '#ff4f7a', -0.35);
+  const cozyL = new THREE.PointLight(NEON.warm, 0.7, 2.4, 2); cozyL.position.set(-0.8, 0.95, -0.85); scene.add(cozyL);
+}
+
 // ---- arcade cabinets (fronts face -X)
 const screens = [];
 function arcade(x, z, text, body) {
@@ -676,6 +773,19 @@ function placeholderCard(w, h, i) {
     g.fillStyle = '#fff'; g.font = `600 ${Math.round(Math.min(W, H) * 0.12)}px "Chakra Petch", sans-serif`; g.fillText('#' + String(i + 1).padStart(2, '0'), W * 0.11, H * 0.88);
   });
 }
+// small number tags on each frame (toggled with the "Frame numbers" button)
+const numLabels = [], labelGeo = new THREE.PlaneGeometry(0.075, 0.042);
+function numTex(n) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 72; const t = new THREE.CanvasTexture(c);
+  const draw = () => {
+    const g = c.getContext('2d'); g.clearRect(0, 0, 128, 72);
+    g.fillStyle = 'rgba(20,10,36,.92)'; g.strokeStyle = '#ff2fb0'; g.lineWidth = 5;
+    g.beginPath(); if (g.roundRect) g.roundRect(4, 4, 120, 64, 14); else g.rect(4, 4, 120, 64); g.fill(); g.stroke();
+    g.fillStyle = '#ffffff'; g.font = '600 46px "Chakra Petch", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 39);
+    t.needsUpdate = true;
+  };
+  draw(); redraws.push(draw); return t;
+}
 function addFrame(place, u, y, w, h) {
   const p = place(u, y), g = new THREE.Group(); g.position.set(p[0], p[1], p[2]); g.rotation.y = p[3]; scene.add(g);
   const idx = frames.length, fm = frameMs[Math.floor(rnd() * frameMs.length)];
@@ -685,6 +795,8 @@ function addFrame(place, u, y, w, h) {
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.5, h * 1.25), poolM); pool.position.set(0, h * 0.12, 0.003); g.add(pool);
   boxB(w * 0.55, 0.016, 0.04, brass, 0, h / 2 + 0.05, 0.045, g);
   boxB(w * 0.5, 0.003, 0.016, lampGlow, 0, h / 2 + 0.047, 0.055, g);
+  const lm = new THREE.MeshBasicMaterial({ map: numTex(idx + 1), transparent: true }); lm.color.setScalar(0.9);
+  const lab = new THREE.Mesh(labelGeo, lm); lab.position.set(-w / 2 + 0.05, -h / 2 + 0.032, 0.027); lab.visible = false; g.add(lab); numLabels.push(lab);
   frames.push({ mat, w, h, custom: false, video: null }); artMeshes.push(art);
 }
 function hangWall(place, u0, u1, y0, y1) {
@@ -748,6 +860,7 @@ player.position.set(0.5, 0, 4.7); player.rotation.y = heading;
 // ================================================================ modes, views, UI
 const $ = id => document.getElementById(id);
 const hud = $('hud'), hint = $('hint'), pad = $('pad'), bWalk = $('bWalk'), bKitchen = $('bKitchen'), bSpeak = $('bSpeak');
+const bTour = $('bTour'), bLoop = $('bLoop'), bNums = $('bNums'), bClean = $('bClean'), fadeEl = $('fade'), msgsEl = $('msgs');
 let mode = 'orbit', view = 'kitchen', tween = null;
 const VIEWS = {
   kitchen: [new THREE.Vector3(3.1, 2.6, 6.6), new THREE.Vector3(0, 0.4, 1.7)],
@@ -763,21 +876,86 @@ function goView(name) {
 function setHint() {
   hint.textContent = mode === 'walk'
     ? 'W/S or ▲▼ to move, A/D or ◀▶ to turn. Walk up to the fridge. Drop files onto the page to hang art.'
-    : 'Drag to look, scroll to zoom. Tap the fridge to open it. Tap a frame or drop images/videos onto the page to hang your art.';
+    : mode === 'tour'
+      ? 'Cinematic tour' + (reduce ? ' (still shots, since reduced motion is on)' : '') + '. T or Esc stops it. C = clean mode for recording (C or Esc to exit).'
+      : 'Drag to look, scroll to zoom. Tap the fridge to open it. Tap a frame or drop images/videos onto the page to hang your art. Keys: T tour, C clean mode, N frame numbers, M panel.';
 }
 function setMode(m) {
-  mode = m;
+  const prev = mode; mode = m;
   bWalk.setAttribute('aria-pressed', m === 'walk'); bWalk.textContent = m === 'walk' ? 'Stop walking' : 'Walk';
+  bTour.setAttribute('aria-pressed', m === 'tour'); bTour.textContent = m === 'tour' ? 'Stop tour' : 'Tour';
   bKitchen.disabled = bSpeak.disabled = m === 'walk';
   pad.hidden = m !== 'walk';
   controls.enabled = m === 'orbit';
-  if (m === 'orbit') { controls.target.set(player.position.x, 0.45, player.position.z); view = player.position.z < SZ1 ? 'speak' : 'kitchen'; }
-  else { tween = null; camLook.set(player.position.x, 0.45, player.position.z); renderer.domElement.focus(); }
+  player.visible = m !== 'tour';
+  fadeEl.style.opacity = 0;
+  if (m === 'orbit') {
+    if (prev === 'tour') { controls.target.copy(tour.look); view = camera.position.z < SZ1 ? 'speak' : 'kitchen'; }
+    else { controls.target.set(player.position.x, 0.45, player.position.z); view = player.position.z < SZ1 ? 'speak' : 'kitchen'; }
+  } else if (m === 'walk') { tween = null; camLook.set(player.position.x, 0.45, player.position.z); renderer.domElement.focus(); }
+  else { tween = null; for (const k in keys) keys[k] = 0; }
   setHint();
 }
 bWalk.addEventListener('click', () => setMode(mode === 'walk' ? 'orbit' : 'walk'));
-bKitchen.addEventListener('click', () => goView('kitchen'));
-bSpeak.addEventListener('click', () => goView('speak'));
+bKitchen.addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); goView('kitchen'); });
+bSpeak.addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); goView('speak'); });
+
+// ---- flying tour: yard + fairy lights → fridge → through the door → bar → around the billiards → art walls → mural
+// each key: [camera position, point it looks at]. Keys are spaced roughly evenly so the speed stays steady.
+const TOUR = [
+  [[-1.2, 1.6, 7.8], [0, 0.9, 3.5]],
+  [[0.2, 1.1, 5.2], [1.0, 0.8, 2.0]],
+  [[0.85, 0.85, 3.2], [1.1, 0.55, 0.3]],
+  [[1.05, 0.65, 1.5], [1.1, 0.5, 0.2]],
+  [[1.1, 0.55, 0.7], [1.1, 0.5, -1.0]],
+  [[1.1, 0.55, -0.4], [0.0, 0.6, -2.0]],
+  [[0.3, 0.85, -1.4], [-2.5, 0.65, -2.2]],
+  [[-1.0, 0.95, -2.3], [-2.6, 0.7, -3.4]],
+  [[-1.5, 1.0, -3.6], [-2.7, 0.75, -4.3]],
+  [[-0.85, 1.15, -4.5], [0.35, 0.45, -3.3]],
+  [[0.35, 1.2, -4.85], [0.35, 0.45, -3.3]],
+  [[1.6, 1.1, -3.3], [0.35, 0.45, -3.3]],
+  [[0.35, 1.15, -1.9], [0.35, 0.45, -3.3]],
+  [[2.05, 1.3, -0.9], [3.0, 1.35, -1.3]],
+  [[2.25, 1.22, -4.2], [3.0, 1.3, -4.6]],
+  [[1.0, 1.3, -5.2], [2.4, 1.2, -6.5]],
+  [[-1.4, 1.3, -5.0], [-3.0, 1.1, -5.7]],
+  [[0, 1.05, -4.1], [0, 1.0, -6.5]],
+];
+const tourPos = new THREE.CatmullRomCurve3(TOUR.map(k => V(...k[0])), false, 'centripetal');
+const tourAim = new THREE.CatmullRomCurve3(TOUR.map(k => V(...k[1])), false, 'centripetal');
+const SEG = 5.5, RUN = (TOUR.length - 1) * SEG, HOLD = 4, FADE = 1.2, SHOT = 4.5;
+const tour = { t: 0, loop: true, look: new THREE.Vector3() }, fridgeMid = V(FX, 0.5, 0.25);
+// gentle ramp in and out at the ends, constant speed in between
+function tourEase(s) { const r = 0.05; s = Math.max(0, Math.min(1, s)); if (s < r) return s * s / (2 * r) / (1 - r); if (s > 1 - r) return 1 - (1 - s) * (1 - s) / (2 * r) / (1 - r); return (s - r / 2) / (1 - r); }
+function tourStep(dt) {
+  tour.t += dt;
+  let fade = 0;
+  if (reduce) {   // reduced motion: a slideshow of still shots, hard cuts, no camera movement
+    const total = TOUR.length * SHOT;
+    if (tour.t >= total) { if (tour.loop) tour.t %= total; else { setMode('orbit'); return; } }
+    const [p, l] = TOUR[Math.min(TOUR.length - 1, Math.floor(tour.t / SHOT))];
+    camera.position.set(...p); tour.look.set(...l);
+  } else {
+    const END = RUN + HOLD;
+    if (tour.t >= END + (tour.loop ? FADE : 0)) { if (tour.loop) tour.t = 0; else { setMode('orbit'); return; } }
+    const u = tourEase(tour.t / RUN);
+    tourPos.getPoint(u, camera.position); tourAim.getPoint(u, tour.look);
+    fade = tour.t < FADE ? 1 - tour.t / FADE : tour.t > END ? (tour.t - END) / FADE : 0;
+  }
+  camera.lookAt(tour.look);
+  fadeEl.style.opacity = fade;
+  doorTarget = camera.position.distanceTo(fridgeMid) < 1.7 ? -1.9 : 0;
+}
+bTour.addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); else { tour.t = 0; setMode('tour'); } });
+bLoop.addEventListener('click', () => { tour.loop = !tour.loop; bLoop.setAttribute('aria-pressed', tour.loop); });
+
+// ---- clean mode (hides every bit of UI for screen recording) + frame number tags
+function setClean(on) { document.body.classList.toggle('clean', on); bClean.setAttribute('aria-pressed', on); }
+bClean.addEventListener('click', () => setClean(true));
+renderer.domElement.addEventListener('dblclick', () => { if (document.body.classList.contains('clean')) setClean(false); });
+function setNums(on) { numLabels.forEach(l => { l.visible = on; }); bNums.setAttribute('aria-pressed', on); }
+bNums.addEventListener('click', () => setNums(bNums.getAttribute('aria-pressed') !== 'true'));
 function toggleHud() { const c = hud.classList.toggle('collapsed'); $('fold').setAttribute('aria-expanded', !c); $('fold').textContent = c ? '+' : '–'; }
 $('fold').addEventListener('click', toggleHud);
 
@@ -785,7 +963,12 @@ const keys = { f: 0, b: 0, l: 0, r: 0 };
 const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'KeyM') { toggleHud(); return; }
+  if (e.code === 'KeyC') { setClean(!document.body.classList.contains('clean')); return; }
+  if (e.code === 'KeyN') { bNums.click(); return; }
+  if (e.code === 'KeyT') { bTour.click(); return; }
+  if (e.code === 'Escape') { if (document.body.classList.contains('clean')) setClean(false); else if (mode === 'tour') setMode('orbit'); return; }
   const k = KEYMAP[e.code];
   if (k && mode === 'walk') { keys[k] = 1; e.preventDefault(); }
 });
@@ -816,24 +999,80 @@ function cover(t, iw, ih, fw, fh) {
   t.needsUpdate = true;
 }
 function swapMap(fr, t) { const old = fr.mat.map; fr.mat.map = t; fr.mat.needsUpdate = true; if (old && old !== t) old.dispose(); }
-function setArt(fr, url, isVideo) {
+// small on-screen messages (art that failed to load, etc.)
+function notify(title, detail, kind = 'err') {
+  const d = document.createElement('div'); d.className = 'msg';
+  if (kind !== 'err') d.style.borderColor = 'rgba(63,240,255,.5)';
+  const tx = document.createElement('div'), b = document.createElement('b'); b.textContent = title; if (kind !== 'err') b.style.color = 'var(--cyan)'; tx.append(b);
+  if (detail) { const sm = document.createElement('small'); sm.textContent = detail; tx.append(sm); }
+  const x = document.createElement('button'); x.textContent = '×'; x.setAttribute('aria-label', 'Dismiss'); x.addEventListener('click', () => d.remove());
+  d.append(tx, x); msgsEl.append(d);
+}
+// work out *why* a link failed: bad URL, blocked by host (CORS), or a format the browser can't show
+const BAD_EXT = /^(heic|heif|tiff?|psd|ai|eps|raw|cr2|nef|avi|wmv|flv|3gp|swf)$/i;
+const FORMATS = 'Use png, jpg, webp, mp4 (H.264) or webm.';
+async function diagnose(url, isVideo, type) {
+  if (/\s/.test(url)) return ['bad URL', 'The address contains spaces. Copy the exact link (spaces should be %20).'];
+  let u; try { u = new URL(url, location.href); } catch (e) { return ['bad URL', "That isn't a valid web address."]; }
+  if (u.protocol === 'blob:') return ['unsupported format', `${type || 'This file type'} can't be shown in the browser. ${FORMATS}`];
+  if (!/^https?:$/.test(u.protocol)) return ['bad URL', 'Links must start with https://'];
+  const ext = (u.pathname.match(/\.([a-z0-9]+)$/i) || [])[1];
+  if (ext && BAD_EXT.test(ext)) return ['unsupported format', `.${ext} files can't be shown in the browser. ${FORMATS}`];
+  const ctl = new AbortController();
+  try {
+    const r = await fetch(u.href, { mode: 'cors', signal: ctl.signal }); ctl.abort();   // headers are enough, skip the body
+    if (r.status === 404 || r.status === 410) return ['bad URL', `The host says the file doesn't exist (${r.status}). Check the spelling and path.`];
+    if (r.status === 401 || r.status === 403) return ['blocked by host', `The host refused access (${r.status}).`];
+    if (!r.ok) return ['bad URL', `The host answered with an error (${r.status}).`];
+    const ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (ct.startsWith('text/html')) return ['bad URL', 'The link points to a web page, not the file itself. Use the direct file link.'];
+    if (!isVideo && ct.startsWith('video/')) return ['retry', true];
+    if (isVideo && ct.startsWith('image/')) return ['retry', false];
+    return ['unsupported format', `${ct ? 'The host says it is ' + ct + ', but the' : 'The'} browser couldn't decode it. ${FORMATS}`];
+  } catch (e) {
+    try {
+      const c2 = new AbortController(); await fetch(u.href, { mode: 'no-cors', signal: c2.signal }); c2.abort();
+      return ['blocked by host', "The host doesn't let other sites use this file (no CORS permission). GitHub Pages allows it."];
+    } catch (e2) { return ['bad URL', "Couldn't reach the host. Check the address and that the site is online."]; }
+  }
+}
+function setArt(fr, url, isVideo, o = {}) {
   if (fr.video) { fr.video.pause(); fr.video.removeAttribute('src'); fr.video = null; }
-  fr.custom = true;
+  fr.custom = true; fr.src = url;
+  const fail = () => {
+    if (fr.src !== url) return;
+    fr.custom = false;
+    if (fr.video) { fr.video.removeAttribute('src'); fr.video = null; }
+    diagnose(url, isVideo, o.type).then(([why, more]) => {
+      if (fr.src !== url) return;
+      if (why === 'retry') { if (!o.retried) return setArt(fr, url, more, Object.assign({}, o, { retried: true })); why = 'unsupported format'; more = FORMATS; }
+      notify(`Frame ${o.n} didn't load: ${why}`, `${more} · ${o.name || url}`);
+    });
+  };
   if (isVideo) {
     const v = document.createElement('video');
-    v.crossOrigin = 'anonymous'; v.loop = true; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.src = url;
+    v.crossOrigin = 'anonymous'; v.loop = true; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', '');
+    v.addEventListener('error', fail, { once: true });
+    v.src = url;
     v.addEventListener('loadedmetadata', () => { const t = new THREE.VideoTexture(v); cover(t, v.videoWidth, v.videoHeight, fr.w, fr.h); swapMap(fr, t); }, { once: true });
     v.play().catch(() => {}); fr.video = v;
   } else {
     const L = new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
-    L.load(url, t => { cover(t, t.image.width, t.image.height, fr.w, fr.h); swapMap(fr, t); }, undefined, () => { fr.custom = false; });
+    L.load(url, t => { if (fr.src === url) { cover(t, t.image.width, t.image.height, fr.w, fr.h); swapMap(fr, t); } }, undefined, fail);
   }
 }
 const isVid = s => /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(s);
-ART.forEach((u, i) => { if (frames[i]) setArt(frames[i], u, isVid(u)); });
+ART.forEach((e, k) => {
+  let [n, url] = typeof e === 'string' ? [k + 1, e] : Array.isArray(e) ? e : [];
+  if (!Number.isInteger(n) || typeof url !== 'string' || !url.trim()) { notify(`ART entry ${k + 1} is malformed`, "Write each entry as [frameNumber, 'https://…']."); return; }
+  url = url.trim();
+  if (n < 1 || n > frames.length) { notify(`Frame ${n} doesn't exist`, `Frames are numbered 1 to ${frames.length}; turn on "Frame numbers" to see them. · ${url}`); return; }
+  if (/\.gif(\?|#|$)/i.test(url)) notify(`Frame ${n}: GIFs only show their first frame`, `Convert it to mp4 for motion. · ${url}`, 'note');
+  setArt(frames[n - 1], url, isVid(url), { n });
+});
 const picker = document.createElement('input'); picker.type = 'file'; picker.accept = 'image/*,video/*'; picker.multiple = true; picker.hidden = true; document.body.appendChild(picker);
 let pickStart = 0;
-function hangFiles(files, start) { files.forEach((f, k) => { const fr = frames[(start + k) % frames.length]; setArt(fr, URL.createObjectURL(f), f.type.startsWith('video/')); }); }
+function hangFiles(files, start) { files.forEach((f, k) => { const i = (start + k) % frames.length; setArt(frames[i], URL.createObjectURL(f), f.type.startsWith('video/'), { n: i + 1, name: f.name, type: f.type }); }); }
 picker.addEventListener('change', () => { hangFiles([...picker.files], pickStart); picker.value = ''; });
 const nextFree = () => { const i = frames.findIndex(f => !f.custom); return i < 0 ? 0 : i; };
 addEventListener('dragover', e => { e.preventDefault(); });
@@ -885,6 +1124,7 @@ const clock = new THREE.Clock(); let frameN = 0;
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   if (mode === 'walk') walk(dt);
+  else if (mode === 'tour') tourStep(dt);
   else {
     if (tween) {
       tween.t = Math.min(1, tween.t + dt / 1.1); const k = ease(tween.t);
@@ -894,7 +1134,7 @@ function frame() {
     controls.update();
   }
   doorAngle += (doorTarget - doorAngle) * Math.min(1, dt * 4.5); doorPivot.rotation.y = doorAngle;
-  shell.visible = mode === 'orbit' ? view !== 'speak' : player.position.z >= SZ1;
+  shell.visible = mode === 'orbit' ? view !== 'speak' : (mode === 'tour' ? camera.position.z : player.position.z) >= SZ1;
   if (!reduce) {
     if (frameN++ % 2 === 0) for (const [c, st, ph] of screens) { drawSunset(c.getContext('2d'), 160, 128, t * 1.6 + ph); st.needsUpdate = true; }
     sign.material.opacity = Math.random() < 0.015 ? 0.35 : 1;
