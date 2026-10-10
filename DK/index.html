@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dirty Kitchen v5</title>
+<title>Dirty Kitchen v6</title>
 <link rel="icon" href="/gumamela.gif" type="image/gif">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&family=Mr+Dafoe&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -45,6 +45,9 @@ button:disabled{opacity:.35; cursor:default}
 .flyind{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--cyan); color:var(--cyan); border-radius:999px; padding:5px 12px; font-size:12px; font-weight:600; letter-spacing:.06em}
 .flyind[hidden]{display:none}
 body.clean .flyind{display:none}
+.sky{display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-top:8px}
+.sky span{font-size:11.5px; color:var(--muted); margin-right:2px}
+.sky button{padding:6px 9px; font-size:11.5px}
 @media (max-width: 640px){
   body.walking .hud{bottom:auto; top:calc(10px + env(safe-area-inset-top,0px))}
   body.walking .flyind{top:auto; left:auto; right:14px; transform:none; bottom:calc(14px + 124px + env(safe-area-inset-bottom,0px))}
@@ -75,10 +78,19 @@ body.clean canvas{cursor:none}
       <button id="bWalk" aria-pressed="false">Walk</button>
       <button id="bKitchen">Kitchen</button>
       <button id="bSpeak">Speakeasy</button>
+      <button id="bBeach">Beach</button>
       <button id="bTour" aria-pressed="false" title="Cinematic tour (T)">Tour</button>
       <button id="bLoop" aria-pressed="true" title="Loop the tour">Loop</button>
       <button id="bNums" aria-pressed="false" title="Frame numbers (N)">Frame numbers</button>
       <button id="bClean" aria-pressed="false" title="Hide all UI for recording (C)">Clean mode</button>
+    </div>
+    <div class="sky" role="group" aria-label="Day/Night">
+      <span>Day/Night</span>
+      <button data-tod="auto" aria-pressed="true" title="Slow cycle, about 8 minutes">Auto</button>
+      <button data-tod="0" aria-pressed="false">Dawn</button>
+      <button data-tod="1" aria-pressed="false">Day</button>
+      <button data-tod="2" aria-pressed="false">Dusk</button>
+      <button data-tod="3" aria-pressed="false">Night</button>
     </div>
   </div>
 </div>
@@ -96,6 +108,7 @@ body.clean canvas{cursor:none}
 <div class="fade" id="fade" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
@@ -129,14 +142,18 @@ renderer.domElement.tabIndex = 0;
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#140a24');
-scene.fog = new THREE.Fog('#140a24', 10, 24);
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.03, 60);
+scene.fog = new THREE.Fog('#140a24', 12, 60);   // colour + distances follow the time of day
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.04, 200);
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; controls.maxPolarAngle = 1.48; controls.minDistance = 0.6; controls.maxDistance = 12;
+controls.enableDamping = true; controls.maxPolarAngle = 1.48; controls.minDistance = 0.6; controls.maxDistance = 30;
 
 let composer = null, bloom = null;
 if (THREE.EffectComposer && THREE.UnrealBloomPass && THREE.RenderPass) {
-  composer = new THREE.EffectComposer(renderer);
+  // the bloom pass renders into an offscreen target; give it a 24-bit depth buffer (WebGL2) so the big v6 world doesn't z-fight
+  const sz = renderer.getSize(new THREE.Vector2()).multiplyScalar(renderer.getPixelRatio());
+  const rt = new THREE.WebGLRenderTarget(sz.x, sz.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat });
+  if (renderer.capabilities.isWebGL2) { rt.depthTexture = new THREE.DepthTexture(sz.x, sz.y); rt.depthTexture.type = THREE.UnsignedIntType; }
+  composer = new THREE.EffectComposer(renderer, rt);
   composer.addPass(new THREE.RenderPass(scene, camera));
   bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.95, 0.5, 0.85);
   composer.addPass(bloom);
@@ -266,12 +283,23 @@ function paperSign(lines, w, h, ink = '#1b1b1b') {
 }
 
 // ================================================================ lights
-scene.add(new THREE.HemisphereLight('#6b5a9e', '#1a1408', 0.5));
-const moon = new THREE.DirectionalLight('#8aa0ff', 0.35); moon.position.set(-3, 5, 4); scene.add(moon);
+const hemi = new THREE.HemisphereLight('#6b5a9e', '#1a1408', 0.5); scene.add(hemi);   // both follow the time of day (see TOD)
+const sunLight = new THREE.DirectionalLight('#8aa0ff', 0.35); sunLight.position.set(-3, 5, 4); scene.add(sunLight);   // sun by day, moon by night
 
 // ================================================================ yard
-const yard = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), std('#ffffff', { map: dirtT }));
+// v6: the yard is a patch of packed earth on the sand, fading out at the edges
+// (seed saved/restored so the frame layout, and so every frame number, stays exactly as in v5)
+const seedV5 = seed;
+const yardT = ctex(512, 512, (g, w, h) => {
+  g.fillStyle = '#5a4b33'; g.fillRect(0, 0, w, h); speckle(g, w, h, 5000, ['#4d4029', '#6b5a3c', '#3f3a26', '#75644a'], 3);
+  g.globalCompositeOperation = 'destination-in';
+  const r = g.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(0,0,0,1)'); r.addColorStop(0.75, 'rgba(0,0,0,.55)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, w, h);
+});
+seed = seedV5;
+const yard = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), std('#ffffff', { map: yardT, transparent: true, depthWrite: false }));
 yard.rotation.x = -Math.PI / 2; yard.position.set(0, -0.003, 1); scene.add(yard);
+yard.material.polygonOffset = true; yard.material.polygonOffsetFactor = -1; yard.material.polygonOffsetUnits = -2;   // sits on the v6 sand
 const terra = std('#a2502e'), leafM = std('#2f6b35', { side: THREE.DoubleSide }), leafD = std('#24552b', { side: THREE.DoubleSide });
 function potted(x, z, s = 1) {
   cyl(0.11 * s, 0.08 * s, 0.16 * s, terra, x, 0, z);
@@ -293,6 +321,7 @@ potted(2.55, 3.7); potted(-2.6, 3.4, 1.2); potted(2.5, 0.7, 0.9); banana(-3.3, 1
 const KD = 4.0;
 const KF = new THREE.Mesh(new THREE.PlaneGeometry(4, KD + 0.1), std('#ffffff', { map: concT }));
 KF.rotation.x = -Math.PI / 2; KF.position.set(0, 0.001, KD / 2); scene.add(KF);
+KF.material.polygonOffset = true; KF.material.polygonOffsetFactor = -2; KF.material.polygonOffsetUnits = -4;
 // back wall with a fridge-sized gap at x 0.8..1.4
 const FX = 1.1, FW = 0.6, FD = 0.36, FH = 0.95;
 boxB(2.8, 1.7, 0.1, blockMat(2.8, 1.7), -0.6, 0, 0);
@@ -497,6 +526,7 @@ boxB(0.005, 0.25, 0.005, std('#111'), -1.0, 1.62, 0.7);
 const bulb2 = new THREE.Mesh(new THREE.SphereGeometry(0.028, 12, 8), glow('#ffe0a0')); bulb2.position.set(-1.0, 1.6, 0.7); scene.add(bulb2);
 
 // ---- fairy lights: wrapped around the yard plants and draped to the kitchen posts
+let yardGlow;   // warm spill from the fairy lights (dimmed by day, see nightLights)
 const fairy = { pts: [], phase: [], speed: [], base: [] };
 const wireM = new THREE.LineBasicMaterial({ color: '#2a2618' });
 function strand(pts) {
@@ -539,7 +569,7 @@ sag(V(-2.6, 0.38, 3.4), V(-3.3, 0.6, 1.2), 0.12, 14);
     im.setColorAt(i, fairy.base[i]);
   }
   im.instanceColor.needsUpdate = true; scene.add(im); fairy.mesh = im; fairy.tmp = c;
-  const yardGlow = new THREE.PointLight('#ffc070', 0.55, 4.5, 2); yardGlow.position.set(0, 1.1, KD + 0.9); scene.add(yardGlow);
+  yardGlow = new THREE.PointLight('#ffc070', 0.55, 4.5, 2); yardGlow.position.set(0, 1.1, KD + 0.9); scene.add(yardGlow);
 }
 
 // ================================================================ speakeasy (x -3..3, z -6.5..-0.06, ceiling 1.8)
@@ -869,6 +899,494 @@ const shell = new THREE.Group(); scene.add(shell);
 // redraw lettering once the web fonts arrive
 if (document.fonts) Promise.all(['150px "Mr Dafoe"', '600 30px "Chakra Petch"', '40px "Permanent Marker"'].map(f => document.fonts.load(f))).then(() => redraws.forEach(fn => fn())).catch(() => {});
 
+// ================================================================ the world around the kitchen: a Zambales-ish beachfront
+// Plan (x right, +z toward the sea): the kitchen's open front faces the sea. A slow river runs along x≈-14 into the sea,
+// dense forest behind the speakeasy (z < FOREST_Z) and across the river. Walkable ground is registered in ZONES (World section).
+const SHORE = 14, RIV0 = -16, RIV1 = -12, FOREST_Z = -13;
+// ---- quality tiers + governor (borrowed from Paper Dusk's old-TV governor: if the frame rate sags, thin things out a bit at a time)
+const qParam = new URLSearchParams(location.search).get('quality');   // ?quality=high or ?quality=low pins a tier and turns the governor off
+const TIERS = [
+  { pr: 1.5, flock: 64, flies: 40, trees: 1, bloom: true, skyEvery: 2 },
+  { pr: 1.15, flock: 40, flies: 28, trees: 0.7, bloom: true, skyEvery: 3 },
+  { pr: 0.85, flock: 22, flies: 16, trees: 0.45, bloom: false, skyEvery: 5 },
+];
+const smallTouch = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
+const quality = { tier: qParam === 'low' ? 2 : qParam === 'high' ? 0 : (smallTouch ? 1 : 0), locked: qParam === 'low' || qParam === 'high' };
+const instGroups = [];   // instanced trees: { im, total } — the governor lowers .count
+let useBloom = true;
+const nz = (t, s) => (Math.sin(t * 1.7 + s) + Math.sin(t * 2.9 + s * 1.3) * 0.6 + Math.sin(t * 4.3 + s * 2.1) * 0.3) / 1.9;   // smooth wandering -1..1
+
+// ---- ground: sand, wet sand at the shore, forest floor
+{
+  const sandT = ctex(256, 256, (g, w, h) => { g.fillStyle = '#c4a87c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 2600, ['#cfb68c', '#b49a70', '#d6c39c', '#a98f66', '#9e8560'], 2); }, 40, 26);
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(180, 100 + SHORE + 1), std('#ffffff', { map: sandT, roughness: 1 }));   // stops at the shore, never under the sea
+  sand.rotation.x = -Math.PI / 2; sand.position.set(0, -0.06, (SHORE + 1 - 100) / 2); scene.add(sand);
+  const strip = (w, d, x, z, c, y = -0.04) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), std(c, { roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m; };
+  strip(180, 1.8, 0, SHORE - 0.7, '#9c8360');                                          // wet sand
+  strip(180, 70, 0, FOREST_Z - 35, '#2c3520');                                         // forest floor
+  strip(60, SHORE - FOREST_Z, RIV0 - 30.6, (SHORE + FOREST_Z) / 2, '#2c3520');         // forest floor across the river
+  strip(0.9, SHORE - FOREST_Z, RIV1 + 0.45, (SHORE + FOREST_Z) / 2, '#9c8360');        // sandy river bank, near side
+  strip(0.6, SHORE - FOREST_Z, RIV0 - 0.3, (SHORE + FOREST_Z) / 2, '#9c8360');         // far bank
+}
+// ---- sea: gentle waves in the vertex shader (normals computed from the same sines so the light moves with them)
+const seaU = { uTime: { value: 0 } };
+const seaM = new THREE.MeshStandardMaterial({ color: '#1f6f7a', roughness: 0.3, metalness: 0.15 });
+{
+  const geo = new THREE.PlaneGeometry(180, 80, 120, 48); geo.rotateX(-Math.PI / 2); geo.translate(0, -0.05, SHORE + 39.4);
+  seaM.onBeforeCompile = sh => {
+    sh.uniforms.uTime = seaU.uTime;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader
+      .replace('#include <beginnormal_vertex>', `
+        float fade = smoothstep(${SHORE.toFixed(1)} - 0.6, ${SHORE.toFixed(1)} + 6.0, position.z);
+        float p1 = position.z * 0.55 + uTime * 0.9, p2 = (position.x * 0.6 + position.z * 0.8) * 1.3 + uTime * 1.4, p3 = (position.z * 0.7 - position.x * 0.7) * 2.1 + uTime * 2.0;
+        float wy = fade * (0.07 * sin(p1) + 0.035 * sin(p2) + 0.018 * sin(p3));
+        float wdx = fade * (0.035 * 1.3 * 0.6 * cos(p2) - 0.018 * 2.1 * 0.7 * cos(p3));
+        float wdz = fade * (0.07 * 0.55 * cos(p1) + 0.035 * 1.3 * 0.8 * cos(p2) + 0.018 * 2.1 * 0.7 * cos(p3));
+        vec3 objectNormal = normalize(vec3(-wdx, 1.0, -wdz));
+        #ifdef USE_TANGENT
+        vec3 objectTangent = vec3(tangent.xyz);
+        #endif`)
+      .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position); transformed.y += wy;');
+  };
+  scene.add(new THREE.Mesh(geo, seaM));
+}
+// shore wash: a band of foam that slides in and out
+const foamT = ctex(256, 64, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  for (let i = 0; i < 40; i++) { g.strokeStyle = `rgba(255,255,255,${0.15 + rnd() * 0.3})`; g.lineWidth = 3 + rnd() * 5; const y = h * (0.15 + rnd() * 0.5); g.beginPath(); g.moveTo(rnd() * w, y); g.lineTo(rnd() * w, y + (rnd() - .5) * 4); g.stroke(); }
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(0.25, 'rgba(255,255,255,.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+}, 10, 1);
+const foam = new THREE.Mesh(new THREE.PlaneGeometry(180, 1.4), new THREE.MeshBasicMaterial({ map: foamT, transparent: true, depthWrite: false, opacity: 0.6 }));
+foam.rotation.x = -Math.PI / 2; foam.position.set(0, 0.01, SHORE + 0.2); scene.add(foam);
+// ---- river: slow scrolling ripples
+const riverT = ctex(128, 256, (g, w, h) => {
+  g.fillStyle = '#2d6b70'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(${170 + rnd() * 60},${220 + rnd() * 35},230,${0.08 + rnd() * 0.18})`; g.lineWidth = 1 + rnd() * 2; const x = rnd() * w, y = rnd() * h; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + (rnd() - .5) * 10, y + 12, x + (rnd() - .5) * 6, y + 18 + rnd() * 30); g.stroke(); }
+}, 1, 10);
+const river = new THREE.Mesh(new THREE.PlaneGeometry(RIV1 - RIV0, SHORE - FOREST_Z + 30), std('#ffffff', { map: riverT, roughness: 0.25, metalness: 0.1 }));
+river.material.polygonOffset = true; river.material.polygonOffsetFactor = -2; river.material.polygonOffsetUnits = -2;
+river.rotation.x = -Math.PI / 2; river.position.set((RIV0 + RIV1) / 2, -0.03, (SHORE + FOREST_Z - 30) / 2 + 0.6); scene.add(river);
+
+// ---- trees: one geometry per species, drawn with instancing
+function mergeParts(parts) {   // [{ geo, color, m? }] -> one non-indexed geometry with vertex colours
+  let n = 0;
+  const gs = parts.map(p => { const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone(); if (p.m) g.applyMatrix4(p.m); if (!g.attributes.normal) g.computeVertexNormals(); n += g.attributes.position.count; return [g, new THREE.Color(p.color)]; });
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let o = 0;
+  for (const [g, c] of gs) {
+    const k = g.attributes.position.count; pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
+    for (let i = 0; i < k; i++) { col[(o + i) * 3] = c.r; col[(o + i) * 3 + 1] = c.g; col[(o + i) * 3 + 2] = c.b; }
+    o += k; g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return out;
+}
+function triGeo(tris) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tris), 3)); g.computeVertexNormals(); return g; }
+const M4 = (x, y, z, rx = 0, ry = 0, rz = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(s, s, s));
+function plant(geo, mat, list, tint) {
+  for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }   // shuffled, so thinning is even
+  const im = new THREE.InstancedMesh(geo, mat, list.length), m = new THREE.Matrix4(), c = new THREE.Color();
+  list.forEach((it, i) => { im.setMatrixAt(i, M4(it.x, it.y || 0, it.z, it.rx || 0, it.ry || 0, it.rz || 0, it.s)); if (tint) im.setColorAt(i, c.set(tint(it))); });
+  im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  scene.add(im); instGroups.push({ im, total: list.length }); return im;
+}
+const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+// keep trees off the buildings, the yard, the path to the sea, the river and the sea
+const clearSpot = (x, z) => !(x > -4.2 && x < 4.4 && z > -7.4 && z < 5.6) && !(x > -4.5 && x < 7.5 && z > 4 && z < SHORE) && !(x > RIV0 - 0.8 && x < RIV1 + 0.9) && z < SHORE - 1.2;
+
+// coconut palm: ringed curved trunk + drooping fronds + coconuts
+{
+  const parts = [], segs = 9, curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 2.6, 0.45), new THREE.Vector3(0.3, 4.9, 1.35));
+  for (let i = 0; i < segs; i++) {
+    const a = curve.getPoint(i / segs), b = curve.getPoint((i + 1) / segs), len = a.distanceTo(b), mid = a.clone().lerp(b, 0.5);
+    const cg = new THREE.CylinderGeometry(0.075 - i * 0.003, 0.1 - i * 0.003, len, 7);
+    const m = new THREE.Matrix4().compose(mid, new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()), new THREE.Vector3(1, 1, 1));
+    parts.push({ geo: cg, color: i % 2 ? '#8b7a62' : '#7a6852', m });
+  }
+  const top = curve.getPoint(1), tris = [];
+  for (let f = 0; f < 10; f++) {
+    const az = f / 10 * Math.PI * 2 + rnd() * 0.3, len = 1.7 + rnd() * 0.5, lift = 0.45 + rnd() * 0.3, n = 7;
+    const dir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az)), side = new THREE.Vector3(-dir.z, 0, dir.x);
+    let prevL = null, prevR = null, prevC = null;
+    for (let s = 0; s <= n; s++) {
+      const u = s / n, el = lift - u * 1.7, w = 0.26 * Math.sin(Math.PI * Math.min(1, u * 1.15 + 0.08));
+      const c = top.clone().add(dir.clone().multiplyScalar(len * u * Math.cos(el * 0.6))).add(new THREE.Vector3(0, len * 0.45 * (u * lift - u * u * 0.9), 0));
+      const l = c.clone().add(side.clone().multiplyScalar(w)).add(new THREE.Vector3(0, -0.06, 0)), r = c.clone().add(side.clone().multiplyScalar(-w)).add(new THREE.Vector3(0, -0.06, 0));
+      if (prevC) tris.push(...prevC.toArray(), ...prevL.toArray(), ...c.toArray(), ...c.toArray(), ...prevL.toArray(), ...l.toArray(), ...prevC.toArray(), ...c.toArray(), ...prevR.toArray(), ...prevR.toArray(), ...c.toArray(), ...r.toArray());
+      prevC = c; prevL = l; prevR = r;
+    }
+  }
+  parts.push({ geo: triGeo(tris), color: '#3f7a3a' });
+  for (let i = 0; i < 4; i++) parts.push({ geo: new THREE.IcosahedronGeometry(0.075, 0), color: '#6b5226', m: M4(top.x + Math.cos(i * 1.6) * 0.1, top.y - 0.12, top.z + Math.sin(i * 1.6) * 0.1) });
+  const spots = [];
+  for (let tries = 0; spots.length < 22 && tries < 600; tries++) {
+    const x = -11 + rnd() * 36, z = -11 + rnd() * 24 * (0.4 + rnd() * 0.6) + 2;
+    if (!clearSpot(x, z) || spots.some(s => Math.hypot(s.x - x, s.z - z) < 2.2)) continue;
+    spots.push({ x, z, ry: rnd() * Math.PI * 2, s: 0.85 + rnd() * 0.35 });
+  }
+  plant(mergeParts(parts), treeMat, spots, () => `hsl(${90 + rnd() * 30},${30 + rnd() * 20}%,${80 + rnd() * 15}%)`);
+  for (const s of spots) block(s.x - 0.13, s.x + 0.13, s.z - 0.13, s.z + 0.13);
+}
+// agoho (casuarina): tall thin trunk, wispy foliage of drooping needle strands, not a regular cone
+{
+  const tris = [], cols = ['#5f7a5c', '#4d6650', '#6d8667', '#56705a'], parts = [];
+  parts.push({ geo: new THREE.CylinderGeometry(0.035, 0.08, 6.6, 6), color: '#5a4a3a', m: M4(0, 3.3, 0) });
+  for (let b = 0; b < 9; b++) {   // a few upward branches the clumps hang from
+    const h = 2.4 + b * 0.5, az = b * 2.4, r = 0.25 + Math.sin(b / 8 * Math.PI) * 0.75;
+    const br = new THREE.CylinderGeometry(0.012, 0.02, r * 1.1, 4);
+    parts.push({ geo: br, color: '#5a4a3a', m: new THREE.Matrix4().compose(new THREE.Vector3(Math.cos(az) * r * 0.5, h + 0.15, Math.sin(az) * r * 0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(az), 0.45, Math.sin(az)).normalize()), new THREE.Vector3(1, 1, 1)) });
+  }
+  const clumps = [[], [], [], []];
+  for (let k = 0; k < 70; k++) {
+    const h = 2.2 + rnd() * 4.6, prof = Math.pow(Math.sin(Math.PI * (h - 2.0) / 5.0), 0.7), r = (0.25 + prof * 0.95) * (0.55 + rnd() * 0.5), az = rnd() * Math.PI * 2;
+    const bx = Math.cos(az) * r, bz = Math.sin(az) * r, set = clumps[k % 4];
+    for (let s = 0; s < 11; s++) {
+      const L = 0.3 + rnd() * 0.6, ox = (rnd() - .5) * 0.3 + Math.cos(az) * 0.12, oz = (rnd() - .5) * 0.3 + Math.sin(az) * 0.12, w = 0.006 + rnd() * 0.008;
+      const tx = bx + (rnd() - .5) * 0.18, tz = bz + (rnd() - .5) * 0.18, ty = h + rnd() * 0.08, px = -Math.sin(az) * w, pz = Math.cos(az) * w;
+      set.push(tx - px, ty, tz - pz, tx + px, ty, tz + pz, tx + ox, ty - L, tz + oz);
+    }
+  }
+  clumps.forEach((t, i) => parts.push({ geo: triGeo(t), color: cols[i] }));
+  const spots = [];
+  for (let tries = 0; spots.length < 18 && tries < 800; tries++) {
+    const shore = rnd() < 0.55, x = shore ? -10 + rnd() * 34 : RIV1 + 1.1 + rnd() * 1.2, z = shore ? SHORE - 2.4 - rnd() * 3 : -11 + rnd() * 22;
+    if (!clearSpot(x, z) || spots.some(s => Math.hypot(s.x - x, s.z - z) < 2.6)) continue;
+    spots.push({ x, z, ry: rnd() * Math.PI * 2, s: 0.8 + rnd() * 0.45 });
+  }
+  plant(mergeParts(parts), treeMat, spots, () => `hsl(${100 + rnd() * 20},${10 + rnd() * 15}%,${78 + rnd() * 18}%)`);
+  for (const s of spots) block(s.x - 0.1, s.x + 0.1, s.z - 0.1, s.z + 0.1);
+}
+// tropical forest edge: broadleaf blobs, emergent trees, banana-ish understory; a painted wall of trees behind for depth
+{
+  const parts = [{ geo: new THREE.CylinderGeometry(0.08, 0.14, 2.2, 6), color: '#4a3a2a', m: M4(0, 1.1, 0) }];
+  [[0, 2.6, 0, 1.05], [0.55, 2.25, 0.3, 0.8], [-0.5, 2.3, -0.2, 0.85], [0.1, 3.2, -0.15, 0.75]].forEach(([x, y, z, s], i) => parts.push({ geo: new THREE.IcosahedronGeometry(s, 0), color: ['#2f5a2a', '#3a6b31', '#28502a', '#447a36'][i], m: M4(x, y, z, rnd(), rnd(), 0, 1) }));
+  const spots = [];
+  const add = (x, z) => spots.push({ x: x + (rnd() - .5) * 1.0, z: z + (rnd() - .5) * 1.0, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.9 });
+  for (let z = FOREST_Z - 0.6; z > FOREST_Z - 16; z -= 1.5 + (FOREST_Z - z) * 0.08) for (let x = -40; x <= 40; x += 1.6 + rnd() * 0.6) add(x, z);
+  for (let x = RIV0 - 1.4; x > -40; x -= 1.7 + (RIV0 - x) * 0.06) for (let z = FOREST_Z; z < SHORE - 2.5; z += 1.7 + rnd() * 0.6) add(x, z);
+  plant(mergeParts(parts), treeMat, spots, () => `hsl(${95 + rnd() * 40},${25 + rnd() * 25}%,${62 + rnd() * 30}%)`);
+  const wallT = ctex(512, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    for (let i = 0; i < 140; i++) { g.fillStyle = `hsl(${100 + rnd() * 30},${30 + rnd() * 20}%,${10 + rnd() * 10}%)`; const x = rnd() * w, r = 8 + rnd() * 22; g.beginPath(); g.arc(x, h - 20 - rnd() * 60, r, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = 'hsl(110,30%,12%)'; g.fillRect(0, h - 40, w, 40);
+  }, 6, 1);
+  const wm = new THREE.MeshLambertMaterial({ map: wallT, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide });
+  plane(120, 9, wm, 0, 4.3, FOREST_Z - 18); const w2 = plane(60, 9, wm, RIV0 - 22, 4.3, 0, Math.PI / 2);
+}
+
+// ---- future portals (non-functional for now). Both are registered as solid in ZONES.
+// FUTURE PORTAL → the balcony: an old photobooth against the speakeasy's outer wall, in the kitchen yard. Curtain closed.
+const PHOTOBOOTH = { x0: SX1 + 0.08, x1: SX1 + 0.6, z0: -1.05, z1: -0.45 };
+{
+  const g = new THREE.Group(); g.position.set((PHOTOBOOTH.x0 + PHOTOBOOTH.x1) / 2, 0, (PHOTOBOOTH.z0 + PHOTOBOOTH.z1) / 2); g.rotation.y = Math.PI / 2; scene.add(g);   // opening faces +x
+  const body = std('#d9cfb4', { roughness: 0.6 }), trim = std('#2f6f6a', { roughness: 0.5, metalness: 0.3 });
+  boxB(0.6, 1.05, 0.5, body, 0, 0, -0.01, g); boxB(0.62, 0.05, 0.52, trim, 0, 1.05, -0.01, g); boxB(0.62, 0.06, 0.52, trim, 0, 0, -0.01, g);
+  const sign = neonSign('FOTO', '#ffcf3f', 0.34, 0.1, { font: '"Chakra Petch", sans-serif', weight: '600', size: 0.75 }); sign.position.set(0, 0.97, 0.245); sign.material.color.setScalar(0.9); g.add(sign);   // dead neon: barely lit
+  const velvet = std('#8a1530', { roughness: 0.85 });
+  for (let i = 0; i < 7; i++) boxB(0.055, 0.72, 0.02 + (i % 2) * 0.012, velvet, -0.15 + i * 0.05, 0.12, 0.25, g);   // closed curtain folds
+  boxB(0.36, 0.02, 0.03, std('#b9bec4', { metalness: 0.8, roughness: 0.3 }), -0.0, 0.85, 0.255, g);
+  boxB(0.18, 0.72, 0.03, body, 0.21, 0.12, 0.255, g);   // side panel with slot + a faded strip
+  boxB(0.08, 0.008, 0.01, std('#111'), 0.21, 0.55, 0.272, g);
+  boxB(0.05, 0.16, 0.004, std('#e9e2cf', { roughness: 0.8 }), 0.21, 0.32, 0.272, g);
+  const s = paperSign(['SIRA PA'], 0.24, 0.1); s.position.set(-0.03, 0.62, 0.275); s.rotation.z = 0.06; g.add(s);
+}
+// FUTURE PORTAL → the balcony bedroom: an old-school phone booth in the speakeasy lounge, by the bar's end.
+const PHONEBOOTH = { x0: SX0 + 0.02, x1: SX0 + 0.5, z0: -0.92, z1: -0.44 };
+{
+  const g = new THREE.Group(); g.position.set((PHONEBOOTH.x0 + PHONEBOOTH.x1) / 2, 0, (PHONEBOOTH.z0 + PHONEBOOTH.z1) / 2); g.rotation.y = Math.PI / 2; scene.add(g);   // door faces +x, into the lounge
+  const wood = std('#5a2e1a', { roughness: 0.55 }), glassB = std('#cfe8ff', { transparent: true, opacity: 0.22, roughness: 0.05 }), brassB = std('#c9a24a', { metalness: 0.8, roughness: 0.3 });
+  boxB(0.46, 0.05, 0.46, wood, 0, 0, 0, g); boxB(0.48, 0.09, 0.48, wood, 0, 1.12, 0, g);
+  for (const [px, pz] of [[-0.21, -0.21], [0.21, -0.21], [-0.21, 0.21], [0.21, 0.21]]) boxB(0.04, 1.07, 0.04, wood, px, 0.05, pz, g);
+  boxB(0.42, 1.07, 0.02, wood, 0, 0.05, -0.215, g);
+  for (const sx of [-1, 1]) { boxB(0.02, 0.45, 0.42, wood, sx * 0.215, 0.05, 0, g); boxB(0.012, 0.55, 0.38, glassB, sx * 0.215, 0.52, 0, g); }
+  boxB(0.4, 0.45, 0.02, wood, 0, 0.05, 0.215, g); boxB(0.38, 0.55, 0.012, glassB, 0, 0.52, 0.215, g);   // folding door: wood below, glass above
+  for (const dx of [-0.1, 0.1]) boxB(0.012, 0.55, 0.016, wood, dx, 0.52, 0.218, g);
+  const hdr = neonSign('TELEPONO', '#ffe1a8', 0.38, 0.07, { font: '"Chakra Petch", sans-serif', weight: '600', size: 0.72 }); hdr.position.set(0, 1.165, 0.246); hdr.material.color.setScalar(1.4); g.add(hdr);
+  boxB(0.16, 0.2, 0.06, std('#1b1b1d', { roughness: 0.4 }), 0, 0.62, -0.18, g);   // the phone, inside
+  const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.01, 16), brassB); dial.rotation.x = Math.PI / 2; dial.position.set(0, 0.7, -0.145); g.add(dial);
+  boxB(0.025, 0.11, 0.03, std('#1b1b1d'), 0.1, 0.66, -0.15, g);
+  const s = paperSign(['WALANG DIAL TONE'], 0.3, 0.09); s.position.set(0, 0.78, 0.228); s.rotation.z = -0.04; g.add(s);
+}
+
+// ================================================================ Paper Dusk sky (dusk/index.html, run live in p5 instance mode)
+// PALETTES copied verbatim from Paper Dusk. Times of day use them in this order: amber dawn → sea glass → dusk plum → violet night.
+const PALETTES = [
+  { sky: ['#3b2d5e', '#a5697d'], paper: ['#f4e8d8', '#eed2c0', '#e2bfb4'], accent: '#f2c9a0' }, // dusk plum
+  { sky: ['#12303f', '#40736d'], paper: ['#e9f2ea', '#d5e7dc', '#bcd8cd'], accent: '#a9e2c9' }, // sea glass
+  { sky: ['#42506f', '#d9a86e'], paper: ['#fdf3e0', '#f3ddb8', '#e8c8a0'], accent: '#ffe1a8' }, // amber dawn
+  { sky: ['#191430', '#4c2c56'], paper: ['#ece6f7', '#d8cdee', '#c2b3df'], accent: '#b79ff0' }  // violet night
+];
+const SKY_W = 1024, SKY_H = 320;
+const sky = { p: null, tex: null, idx: [0, 0], mix: 0, n: 0 };
+const skyFallbackC = document.createElement('canvas'); skyFallbackC.width = 4; skyFallbackC.height = 128;
+const skyMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyFallbackC), side: THREE.BackSide, fog: false, depthWrite: false });
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(90, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2), skyMat); skyDome.renderOrder = -2; scene.add(skyDome);
+const skyBelow = new THREE.Mesh(new THREE.SphereGeometry(90, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#000', side: THREE.BackSide, fog: false, depthWrite: false })); skyBelow.renderOrder = -2; scene.add(skyBelow);
+function paperDuskSky(p) {
+  // Paper Dusk's sky layers as written: the translucent gradient veil and the three cloud layers (sloooow / slow / fast).
+  // Changes for the dome: the palette index comes from the world clock, clouds wrap around seamlessly (drawn twice at the seam),
+  // there are 18 clouds for the full 360°, speeds are scaled for the dome, and it only draws when the world asks (noLoop + redraw).
+  let bg; const clouds = [], cur = {};
+  const speedScale = reduce ? 0.5 : 1, DOME_SPEED = 0.3;
+  p.setup = () => {
+    p.createCanvas(SKY_W, SKY_H); p.pixelDensity(1); p.noLoop();
+    bg = p.createGraphics(8, 240); bg.pixelDensity(1);
+    for (let i = 0; i < 18; i++) clouds.push(new Cloud(i % 3));
+    clouds.sort((a, b) => a.layer - b.layer);
+    updatePalette(); renderGradient(); p.image(bg, 0, 0, p.width, p.height);
+    sky.tex = new THREE.CanvasTexture(p.drawingContext.canvas); sky.tex.wrapS = THREE.RepeatWrapping;
+    skyMat.map = sky.tex; skyMat.needsUpdate = true;
+  };
+  p.draw = () => {
+    updatePalette();
+    if (sky.n++ % 20 === 0) renderGradient();
+    p.push(); p.tint(255, 26); p.image(bg, 0, 0, p.width, p.height); p.pop();   // translucent veil of sky
+    p.noStroke();
+    for (const c of clouds) { c.update(); c.display(); }
+    sky.tex.needsUpdate = true;
+  };
+  sky.snap = () => { updatePalette(); renderGradient(); p.image(bg, 0, 0, p.width, p.height); for (const c of clouds) c.display(); sky.tex.needsUpdate = true; };
+  function updatePalette() {
+    const a = PALETTES[sky.idx[0]], b = PALETTES[sky.idx[1]], mixAmt = sky.mix;
+    cur.skyTop = p.lerpColor(p.color(a.sky[0]), p.color(b.sky[0]), mixAmt);
+    cur.skyBot = p.lerpColor(p.color(a.sky[1]), p.color(b.sky[1]), mixAmt);
+    cur.accent = p.lerpColor(p.color(a.accent), p.color(b.accent), mixAmt);
+  }
+  function renderGradient() {
+    for (let y = 0; y < bg.height; y++) { bg.stroke(p.lerpColor(cur.skyTop, cur.skyBot, y / bg.height)); bg.line(0, y, bg.width, y); }
+  }
+  class Cloud {
+    constructor(layer) {
+      this.layer = layer; // 0 far, 1 mid, 2 near
+      const m = p.min(p.width, p.height);
+      const spec = [
+        { spd: [0.04, 0.12], size: [0.08, 0.13], op: [12, 20] },  // sloooow
+        { spd: [0.22, 0.45], size: [0.12, 0.19], op: [18, 28] },  // slow
+        { spd: [0.85, 1.60], size: [0.18, 0.28], op: [24, 36] }   // fast
+      ][layer];
+      this.speed = p.random(spec.spd[0], spec.spd[1]) * speedScale * DOME_SPEED;
+      this.size = m * p.random(spec.size[0], spec.size[1]);
+      this.opacity = p.random(spec.op[0], spec.op[1]);
+      this.pos = p.createVector(p.random(p.width), p.random(p.height * 0.85));
+      this.bubbles = [];
+      const n = p.floor(p.random(3, 7));
+      for (let i = 0; i < n; i++) this.bubbles.push({ ox: p.random(-this.size / 2, this.size / 2), oy: p.random(-this.size / 4, this.size / 4), r: p.random(this.size * 0.6, this.size) });
+    }
+    update() { this.pos.x -= this.speed; if (this.pos.x < -this.size) this.pos.x += p.width; }
+    display() {
+      // paper-white pulled slightly toward the sky so clouds sit IN it
+      const c = p.lerpColor(p.color(255), cur.skyBot, 0.22);
+      p.fill(p.red(c), p.green(c), p.blue(c), this.opacity);
+      for (const x of [this.pos.x, this.pos.x + p.width, this.pos.x - p.width]) {
+        if (x < -this.size * 1.5 || x > p.width + this.size * 1.5) continue;
+        p.push(); p.translate(x, this.pos.y);
+        for (const b of this.bubbles) p.ellipse(b.ox, b.oy, b.r, b.r * 0.8);
+        p.pop();
+      }
+    }
+  }
+}
+function drawSkyFallback(top, bot) {   // only used if p5 can't load: the same gradient, no clouds
+  const g = skyFallbackC.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+  gr.addColorStop(0, top.getStyle()); gr.addColorStop(1, bot.getStyle()); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); skyMat.map.needsUpdate = true;
+}
+if (window.p5) { const holder = document.createElement('div'); holder.style.display = 'none'; holder.setAttribute('aria-hidden', 'true'); document.body.appendChild(holder); sky.p = new p5(paperDuskSky, holder); }
+
+// ================================================================ time of day
+// v runs 0..4: 0 dawn, 1 day, 2 dusk, 3 night. Like Paper Dusk, each phase holds (70%) then crossfades (30%) into the next.
+const TOD = [
+  { name: 'dawn', pal: 2, sun: [0.8, 0.25, 0.35], sunCol: '#ffc89a', sunI: 0.85, hemiSky: '#d6a27a', hemiGround: '#5a4630', hemiI: 0.6, fog: [18, 85], night: 0.3 },
+  { name: 'day', pal: 1, sun: [0.35, 0.9, 0.3], sunCol: '#fff3df', sunI: 0.85, hemiSky: '#a9dcd4', hemiGround: '#8a7656', hemiI: 0.55, fog: [24, 100], night: 0 },
+  { name: 'dusk', pal: 0, sun: [-0.85, 0.2, 0.25], sunCol: '#ff9f8a', sunI: 0.65, hemiSky: '#a67294', hemiGround: '#3a2a30', hemiI: 0.55, fog: [16, 80], night: 0.6 },
+  { name: 'night', pal: 3, sun: [-0.3, 0.8, 0.45], sunCol: '#8aa0ff', sunI: 0.35, hemiSky: '#6b5a9e', hemiGround: '#1a1408', hemiI: 0.5, fog: [12, 60], night: 1 },
+];
+TOD.forEach(T => { T.P = PALETTES[T.pal]; T.c = { sun: new THREE.Color(T.sunCol), hs: new THREE.Color(T.hemiSky), hg: new THREE.Color(T.hemiGround), top: new THREE.Color(T.P.sky[0]), bot: new THREE.Color(T.P.sky[1]), acc: new THREE.Color(T.P.accent), paper: T.P.paper.map(h => new THREE.Color(h)) }; });
+const AUTO_SECONDS = 480;   // one full dawn→night→dawn cycle
+const tod = { v: 2.2, auto: true, anim: null, night: 0.6, inside: 0, paper: [new THREE.Color(), new THREE.Color(), new THREE.Color()], accent: new THREE.Color(), bot: new THREE.Color(), top: new THREE.Color() };
+const nightLights = [];   // [light, baseIntensity, dayFraction]
+const tmpC = new THREE.Color(), tmpV = new THREE.Vector3(), seaDeep = new THREE.Color('#14505c');
+function setTod(target) {   // target: 'auto' or 0..3
+  todBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.tod === String(target)));
+  if (target === 'auto') { tod.auto = true; return; }
+  tod.auto = false;
+  let to = target + 0.2; while (to < tod.v) to += 4;   // always roll forward through the sky, like a time-lapse
+  if (reduce) { tod.v = to % 4; tod.anim = null; if (sky.snap) sky.snap(); }
+  else tod.anim = { from: tod.v, to, t: 0, dur: Math.min(4, 1.2 + (to - tod.v)) };
+}
+function updateTod(dt) {
+  if (tod.anim) { const a = tod.anim; a.t = Math.min(1, a.t + dt / a.dur); tod.v = a.from + (a.to - a.from) * ease(a.t); if (a.t >= 1) { tod.v %= 4; tod.anim = null; } }
+  else if (tod.auto) tod.v = (tod.v + dt * 4 / AUTO_SECONDS) % 4;
+  const i = Math.floor(tod.v) % 4, f = tod.v - Math.floor(tod.v), m = f < 0.7 ? 0 : (f - 0.7) / 0.3, A = TOD[i], B = TOD[(i + 1) % 4];
+  sky.idx = [A.pal, B.pal]; sky.mix = m;
+  const L = (a, b) => a + (b - a) * m;
+  tod.night = L(A.night, B.night);
+  tod.top.copy(A.c.top).lerp(B.c.top, m); tod.bot.copy(A.c.bot).lerp(B.c.bot, m); tod.accent.copy(A.c.acc).lerp(B.c.acc, m);
+  for (let k = 0; k < 3; k++) tod.paper[k].copy(A.c.paper[k]).lerp(B.c.paper[k], m);
+  // inside the speakeasy you can't see the sky: keep its moody v5 lighting whatever the hour
+  const cp = camera.position, inside = cp.x > SX0 && cp.x < SX1 && cp.z > SZ0 && cp.z < SZ1 && cp.y < SH ? 1 : 0;
+  tod.inside += (inside - tod.inside) * Math.min(1, dt * 5);
+  const In = tod.inside, N = TOD[3];
+  sunLight.color.copy(A.c.sun).lerp(B.c.sun, m).lerp(N.c.sun, In);
+  sunLight.intensity = L(A.sunI, B.sunI) * (1 - In) + N.sunI * In;
+  tmpV.set(...A.sun).lerp(new THREE.Vector3(...B.sun), m).normalize(); sunLight.position.copy(tmpV).multiplyScalar(12);
+  hemi.color.copy(A.c.hs).lerp(B.c.hs, m).lerp(N.c.hs, In); hemi.groundColor.copy(A.c.hg).lerp(B.c.hg, m).lerp(N.c.hg, In);
+  hemi.intensity = L(A.hemiI, B.hemiI) * (1 - In) + N.hemiI * In;
+  scene.fog.color.copy(tod.bot).lerp(tod.top, 0.25); scene.fog.near = L(A.fog[0], B.fog[0]); scene.fog.far = L(A.fog[1], B.fog[1]);
+  scene.background.copy(scene.fog.color); skyBelow.material.color.copy(scene.fog.color);
+  seaM.color.copy(seaDeep).lerp(tod.bot, 0.35).lerp(tod.top, 0.15);
+  // lamps: by day they're subtle, at night they carry the scene (indoors they always do)
+  const n = Math.max(tod.night, In);
+  for (const [light, base, dayF] of nightLights) light.intensity = base * (dayF + (1 - dayF) * n);
+  if (bloom) { bloom.strength = 0.3 + 0.65 * n; bloom.threshold = 1.0 - 0.15 * n; }
+  if (!sky.p) drawSkyFallback(tod.top, tod.bot);
+}
+
+// ================================================================ paper flock (by day) and fireflies (by night)
+const flock = { birds: [], active: 0, panic: null, nextPanic: 0, meshes: {} };
+{
+  const crane = triGeo([0, 0.03, 0.24, -0.035, 0, 0.0, 0, 0.0, -0.2, 0, 0.03, 0.24, 0, 0.0, -0.2, 0.035, 0, 0.0, 0, 0.03, 0.24, 0, -0.05, 0.02, 0, 0.0, -0.2, 0, 0.0, -0.2, 0, 0.09, -0.28, 0, 0.0, -0.12]);
+  const wing = triGeo([0, 0, 0.07, 0, 0, -0.08, 0.3, 0.02, -0.03]);
+  const dart = triGeo([0, 0, 0.22, -0.15, 0.01, -0.12, 0, -0.04, -0.1, 0, 0, 0.22, 0, -0.04, -0.1, 0.15, 0.01, -0.12]);
+  const scrap = triGeo([0.1, 0, 0, -0.05, 0, -0.05, -0.02, 0.01, 0, 0.1, 0, 0, -0.02, 0.01, 0, -0.05, 0, 0.05]);
+  const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+  const cap = TIERS[0].flock, counts = { crane: Math.round(cap * 5 / 8), plane: Math.round(cap * 2 / 8) }; counts.scrap = cap - counts.crane - counts.plane;
+  const mk = (geo, n) => { const im = new THREE.InstancedMesh(geo, mat, n); im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; for (let i = 0; i < n; i++) im.setColorAt(i, new THREE.Color('#fff')); scene.add(im); return im; };
+  flock.meshes = { crane: mk(crane, counts.crane), wingL: mk(wing, counts.crane), wingR: mk(wing, counts.crane), plane: mk(dart, counts.plane), scrap: mk(scrap, counts.scrap) };
+  const spec = { crane: [0.95, 1.1], plane: [1.25, 1.4], scrap: [1.4, 1.6] };   // [max speed, max force]
+  let perchI = 0;
+  for (let i = 0; i < cap; i++) {
+    const roll = i % 8, type = roll < 2 ? 'plane' : roll < 7 ? 'crane' : 'scrap';
+    const slot = flock.birds.filter(b => b.type === type).length;
+    flock.birds.push({
+      type, slot, pos: new THREE.Vector3(1 + (rnd() - .5) * 8, 3.2 + rnd() * 2, 6 + (rnd() - .5) * 8), vel: new THREE.Vector3(rnd() - .5, 0, rnd() - .5).multiplyScalar(0.6),
+      tone: Math.floor(rnd() * 3), jit: (rnd() - .5) * 28 / 255, flap: rnd() * 6.28, maxS: spec[type][0], maxF: spec[type][1], perched: false,
+      perch: new THREE.Vector3(-7 + (perchI % 9) * 1.9 + rnd() * 0.8, 0.02, SHORE - 3.2 + Math.floor(perchI++ / 9) * 0.55 + rnd() * 0.3), ry: rnd() * 6.28,
+    });
+  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 64), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  ring.visible = false; scene.add(ring); flock.ring = ring;
+}
+const fireflies = { n: 40 };
+{
+  const n = fireflies.n, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  fireflies.base = []; fireflies.phase = []; fireflies.throb = []; fireflies.flare = new Float32Array(n);
+  const zones = [[-4, 4, 0.2, 1.3, -0.5, 4.5], [-12, 12, 0.3, 2.2, FOREST_Z + 0.5, FOREST_Z + 3.5], [RIV1 + 0.2, RIV1 + 1.6, 0.2, 1.4, -10, 11], [-9, 14, 0.3, 1.5, 6, 11]];
+  for (let i = 0; i < n; i++) { const z = zones[i % zones.length]; fireflies.base.push(new THREE.Vector3(z[0] + rnd() * (z[1] - z[0]), z[2] + rnd() * (z[3] - z[2]), z[4] + rnd() * (z[5] - z[4]))); fireflies.phase.push(rnd() * 6.28); fireflies.throb.push(1.2 + rnd() * 1.8); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const dot = ctex(64, 64, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+  fireflies.pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.22, map: dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  fireflies.pts.frustumCulled = false; scene.add(fireflies.pts);
+}
+const fm = new THREE.Matrix4(), fq = new THREE.Quaternion(), fs = new THREE.Vector3(1, 1, 1), fz = new THREE.Vector3(0, 0, 1), fdir = new THREE.Vector3(), wingRot = new THREE.Matrix4(), mirror = new THREE.Matrix4().makeScale(-1, 1, 1);
+const flockTarget = new THREE.Vector3(), sep = new THREE.Vector3(), ali = new THREE.Vector3(), coh = new THREE.Vector3(), steer = new THREE.Vector3(), tmpA = new THREE.Vector3();
+function steerTo(b, desiredVel, out) { return out.copy(desiredVel).sub(b.vel).clampLength(0, b.maxF); }
+function updateFlock(dt, t) {
+  const birds = flock.birds, active = flock.active, settle = tod.night > 0.55, sp = reduce ? 0.5 : 1;
+  flockTarget.set(2 + 9 * nz(t * 0.05, 13.7), 3.9 + 1.1 * nz(t * 0.04, 5.1), 3.5 + 7 * nz(t * 0.045, 71.3));   // the wandering current
+  // gentle panic: now and then the flock spooks itself (only by day)
+  if (!settle && !flock.panic && t > flock.nextPanic) {
+    let cx = 0, cy = 0, cz = 0, k = 0; for (let i = 0; i < active; i++) if (!birds[i].perched) { cx += birds[i].pos.x; cy += birds[i].pos.y; cz += birds[i].pos.z; k++; }
+    if (k) flock.panic = { c: new THREE.Vector3(cx / k + (rnd() - .5) * 2, cy / k, cz / k + (rnd() - .5) * 2), start: t, dur: 2.4 + rnd() * 1.2, radius: 2.4 + rnd() * 1.4 };
+    flock.nextPanic = t + 14 + rnd() * 16;
+  }
+  const P = flock.panic; let pAge = 0, env = 0;
+  if (P) { pAge = (t - P.start) / P.dur; if (pAge >= 1) { flock.panic = null; flock.ring.visible = false; } else env = Math.sin(pAge * Math.PI); }
+  if (flock.panic && !reduce) {
+    const r = flock.ring, e = 1 - Math.pow(1 - pAge, 3); r.visible = true; r.position.copy(P.c); r.lookAt(camera.position); r.scale.setScalar(Math.max(0.01, P.radius * e)); r.material.opacity = 0.35 * (1 - pAge); r.material.color.copy(tod.accent);
+  }
+  for (let i = 0; i < active; i++) {
+    const b = birds[i];
+    if (settle) {
+      tmpA.copy(b.perch).sub(b.pos); const d = tmpA.length();
+      if (d < 0.06 || b.perched) { b.perched = true; b.pos.copy(b.perch); b.vel.multiplyScalar(0); continue; }
+      tmpA.setLength(Math.min(b.maxS, d * 0.8 + 0.15)); b.vel.add(steerTo(b, tmpA, steer).multiplyScalar(dt * 2));
+    } else {
+      if (b.perched) { b.perched = false; b.vel.set(rnd() - .5, 1.2, rnd() - .5); }
+      sep.set(0, 0, 0); ali.set(0, 0, 0); coh.set(0, 0, 0); let ns = 0, nn = 0;
+      for (let j = 0; j < active; j++) {
+        if (j === i) continue; const o = birds[j], d = b.pos.distanceTo(o.pos);
+        if (d < 0.5 && d > 0) { sep.add(tmpA.copy(b.pos).sub(o.pos).divideScalar(d * d)); ns++; }
+        if (d < 1.7) { ali.add(o.vel); coh.add(o.pos); nn++; }
+      }
+      const acc = tmpA.set(0, 0, 0);
+      if (ns) acc.add(steerTo(b, sep.setLength(b.maxS), steer).multiplyScalar(1.5));
+      if (nn) { acc.add(steerTo(b, ali.divideScalar(nn).setLength(b.maxS), steer).multiplyScalar(1.2)); acc.add(steerTo(b, coh.divideScalar(nn).sub(b.pos).setLength(b.maxS), steer)); }
+      acc.add(steerTo(b, fdir.copy(flockTarget).sub(b.pos).setLength(b.maxS), steer).multiplyScalar(0.9));
+      if (b.pos.y < 2.6) acc.y += (2.6 - b.pos.y) * 2; if (b.pos.y > 6.5) acc.y -= (b.pos.y - 6.5) * 2;
+      if (P) { const d = b.pos.distanceTo(P.c); if (d < P.radius) acc.add(fdir.copy(b.pos).sub(P.c).setLength(b.maxF * 6 * env * (1 - d / P.radius))); }
+      acc.x += nz(t * 0.6 + i, 3) * 0.25; acc.y += nz(t * 0.5 + i, 9) * 0.15;   // paper wobble
+      b.vel.addScaledVector(acc, dt).clampLength(0, b.maxS * (P ? 1.4 : 1) * sp);
+    }
+    b.pos.addScaledVector(b.vel, dt);
+  }
+  // write instance matrices + paper colours
+  const M = flock.meshes, recolor = (Math.floor(t * 2) !== flock.lastColorTick); flock.lastColorTick = Math.floor(t * 2);
+  for (let i = 0; i < active; i++) {
+    const b = birds[i], mesh = M[b.type];
+    if (b.perched) fq.setFromEuler(new THREE.Euler(0, b.ry, 0)); else if (b.vel.lengthSq() > 1e-6) fq.setFromUnitVectors(fz, fdir.copy(b.vel).normalize());
+    if (b.type === 'scrap') fq.multiply(new THREE.Quaternion().setFromAxisAngle(fz, t * 3 + i));
+    fm.compose(b.pos, fq, fs); mesh.setMatrixAt(b.slot, fm);
+    if (b.type === 'crane') {
+      b.flap += dt * (b.perched ? 0 : 6) * sp; const a = b.perched ? 1.25 : 0.45 * Math.sin(b.flap) + 0.15;
+      M.wingL.setMatrixAt(b.slot, wingRot.makeRotationZ(a).premultiply(fm)); M.wingR.setMatrixAt(b.slot, wingRot.makeRotationZ(-a).premultiply(fm).multiply(mirror));
+    }
+    if (recolor) { tmpC.copy(tod.paper[b.tone]); tmpC.r += b.jit; tmpC.g += b.jit; tmpC.b += b.jit; mesh.setColorAt(b.slot, tmpC); if (b.type === 'crane') { M.wingL.setColorAt(b.slot, tmpC); M.wingR.setColorAt(b.slot, tmpC); } }
+  }
+  for (const k in M) { M[k].instanceMatrix.needsUpdate = true; if (recolor) M[k].instanceColor.needsUpdate = true; }
+}
+function setFlockCount(n) {
+  flock.active = Math.min(n, flock.birds.length); const c = { crane: 0, plane: 0, scrap: 0 };
+  for (let i = 0; i < flock.active; i++) c[flock.birds[i].type]++;
+  const M = flock.meshes; M.crane.count = M.wingL.count = M.wingR.count = c.crane; M.plane.count = c.plane; M.scrap.count = c.scrap;
+}
+function updateFireflies(dt, t) {
+  const vis = Math.max(0, Math.min(1, (tod.night - 0.35) / 0.4)), F = fireflies; F.pts.visible = vis > 0.01;
+  if (!F.pts.visible) return;
+  const pos = F.pts.geometry.attributes.position, col = F.pts.geometry.attributes.color, P = flock.panic;
+  const core = tmpC.copy(tod.accent).lerp(new THREE.Color(1, 0.95, 0.75), 0.55);
+  for (let i = 0; i < F.n; i++) {
+    const b = F.base[i], ph = F.phase[i], sp = reduce ? 0 : 1;
+    const x = b.x + 0.5 * nz(t * 0.08 * sp + ph, i), y = b.y + 0.25 * nz(t * 0.11 * sp + ph, i + 7) + 0.1, z = b.z + 0.5 * nz(t * 0.09 * sp + ph, i + 3);
+    pos.setXYZ(i, x, y, z);
+    if (P) { const ringR = P.radius * (1 - Math.pow(1 - Math.min(1, (t - P.start) / P.dur), 3)); if (Math.abs(Math.hypot(x - P.c.x, y - P.c.y, z - P.c.z) - ringR) < 0.4) F.flare[i] = 1; }
+    F.flare[i] *= 0.96;
+    const br = vis * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * F.throb[i] * sp + ph)) + F.flare[i]);
+    col.setXYZ(i, core.r * br * 1.6, core.g * br * 1.6, core.b * br * 1.6);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+}
+
+// ---- tiers + governor
+function setTier(n) {
+  quality.tier = n; const T = TIERS[n];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, T.pr)); renderer.setSize(innerWidth, innerHeight);
+  if (composer) { if (composer.setPixelRatio) composer.setPixelRatio(Math.min(devicePixelRatio, T.pr)); composer.setSize(innerWidth, innerHeight); }
+  for (const g of instGroups) g.im.count = Math.max(1, Math.round(g.total * T.trees));
+  setFlockCount(T.flock); fireflies.pts.geometry.setDrawRange(0, T.flies); sky.every = T.skyEvery; useBloom = T.bloom;
+}
+const gov = { frames: 0, since: 0, startAt: performance.now() + 5000 };
+function governor() {
+  if (quality.locked || document.hidden) { gov.frames = 0; gov.since = performance.now(); return; }
+  const now = performance.now(); if (now < gov.startAt) { gov.since = now; return; }
+  gov.frames++;
+  if (now - gov.since >= 4000) {
+    const fps = gov.frames * 1000 / (now - gov.since); gov.frames = 0; gov.since = now;
+    if (fps < 40 && quality.tier < TIERS.length - 1) setTier(quality.tier + 1);   // nobody notices ten fewer cranes
+  }
+}
+function updateWorld(dt, t) {
+  updateTod(dt);
+  skyDome.position.set(camera.position.x, 0, camera.position.z); skyBelow.position.copy(skyDome.position);
+  if (sky.p && sky.tex && frameN % (sky.every || 2) === 0) sky.p.redraw();
+  if (!reduce) {
+    seaU.uTime.value = t;
+    foam.position.z = SHORE + 0.1 + Math.sin(t * 0.55) * 0.35; foam.material.opacity = 0.45 + 0.25 * Math.sin(t * 0.55 + 1.2); foamT.offset.x = t * 0.004;
+    riverT.offset.y = t * 0.02;
+  }
+  updateFlock(dt, t); updateFireflies(dt, t); governor();
+}
+nightLights.push([bulbLight, 1.4, 0.35], [yardGlow, 0.55, 0.2]);
+
 // ================================================================ player capsule
 const player = capsuleMesh('#6366f1');
 let heading = Math.PI;
@@ -882,6 +1400,7 @@ let mode = 'orbit', view = 'kitchen', tween = null;
 const VIEWS = {
   kitchen: [new THREE.Vector3(3.1, 2.6, 6.6), new THREE.Vector3(0, 0.4, 1.7)],
   speak: [new THREE.Vector3(5.0, 3.9, -0.9), new THREE.Vector3(-0.3, 0.3, -3.6)],
+  beach: [new THREE.Vector3(9.5, 3.4, 19.5), new THREE.Vector3(-0.5, 1.6, 1.5)],
 };
 camera.position.copy(VIEWS.kitchen[0]); controls.target.copy(VIEWS.kitchen[1]); controls.update();
 function goView(name) {
@@ -903,9 +1422,10 @@ function setMode(m) {
   const prev = mode; mode = m;
   bWalk.setAttribute('aria-pressed', m === 'walk'); bWalk.textContent = m === 'walk' ? 'Stop walking' : 'Walk';
   bTour.setAttribute('aria-pressed', m === 'tour'); bTour.textContent = m === 'tour' ? 'Stop tour' : 'Tour';
-  bKitchen.disabled = bSpeak.disabled = m === 'walk';
+  bKitchen.disabled = bSpeak.disabled = $('bBeach').disabled = m === 'walk';
   pad.hidden = m !== 'walk'; document.body.classList.toggle('walking', m === 'walk');
-  if (m !== 'walk' && mover.flying) setFly(false);
+  if (m !== 'walk' && mover.flying && World.canLand(player.position.x, player.position.z)) setFly(false);
+  flyInd.hidden = !(m === 'walk' && mover.flying);
   controls.enabled = m === 'orbit';
   player.visible = m !== 'tour';
   fadeEl.style.opacity = 0;
@@ -919,10 +1439,18 @@ function setMode(m) {
 bWalk.addEventListener('click', () => setMode(mode === 'walk' ? 'orbit' : 'walk'));
 bKitchen.addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); goView('kitchen'); });
 bSpeak.addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); goView('speak'); });
+$('bBeach').addEventListener('click', () => { if (mode === 'tour') setMode('orbit'); goView('beach'); });
+const todBtns = [...document.querySelectorAll('[data-tod]')];
+todBtns.forEach(b => b.addEventListener('click', () => setTod(b.dataset.tod === 'auto' ? 'auto' : +b.dataset.tod)));
 
 // ---- flying tour: yard + fairy lights → fridge → through the door → bar → around the billiards → art walls → mural
 // each key: [camera position, point it looks at]. Keys are spaced roughly evenly so the speed stays steady.
 const TOUR = [
+  [[19, 7.2, 31], [-1.5, 3.2, -2]],          // wide: sea, beach, palms and the Paper Dusk sky
+  [[15.5, 6.0, 26.5], [-1.5, 2.6, -1]],
+  [[11, 4.6, 21], [-1, 1.9, 0.5]],
+  [[6.5, 3.2, 15.5], [-0.5, 1.3, 2]],
+  [[2.4, 2.2, 11], [0, 1.0, 3]],
   [[-1.2, 1.6, 7.8], [0, 0.9, 3.5]],
   [[0.2, 1.1, 5.2], [1.0, 0.8, 2.0]],
   [[0.85, 0.85, 3.2], [1.1, 0.55, 0.3]],
@@ -1111,21 +1639,40 @@ addEventListener('drop', e => {
 // rises in steps of <= STEP) and lower the ceiling of the zone underneath; list higher/smaller zones first.
 // Walls and furniture are `blockers` (see block() at the top); give them a y range to make them jump-over/fly-over-able.
 const PH = 0.8, PR = 0.2, STEP = 0.12;                     // player height, radius, max step-up
+// solidBelow: nothing may be below that height there (water: you can fly over it but not walk or land; forest: never).
+const roofY = z => 1.95 - 0.35 * (z + 0.05) / (KD + 0.45);   // kitchen roof surface
 const ZONES = [
+  // roofs: up here only if you fly up from outside; you can land and walk on them
+  { name: 'speakeasy roof', x0: SX0 - 0.07, x1: SX1 + 0.07, z0: SZ0 - 0.07, z1: SZ1, floor: 1.9, ceil: 6 },
+  { name: 'kitchen roof', x0: -2.25, x1: 2.25, z0: SZ1, z1: KD + 0.45, floor: (x, z) => roofY(z) + 0.01, ceil: 6 },
+  // FUTURE PORTALS (blocking for now): the yard photobooth will lead up to the balcony, the lounge phone booth to the balcony bedroom.
+  // To open one later: drop solidBelow, add a doorway zone through it and a stair/ramp zone up to a new balcony zone (floor ~1.9).
+  { name: 'photobooth (future portal: balcony)', ...PHOTOBOOTH, floor: 0, ceil: 6, solidBelow: Infinity },
+  { name: 'phone booth (future portal: balcony bedroom)', ...PHONEBOOTH, floor: 0, ceil: SH, solidBelow: Infinity },
   { name: 'fridge door', x0: FX - FW / 2, x1: FX + FW / 2, z0: SZ1 - 0.02, z1: FD, floor: 0, ceil: FH - 0.03 },
   { name: 'speakeasy', x0: SX0, x1: SX1, z0: SZ0, z1: SZ1, floor: 0, ceil: SH },
-  { name: 'kitchen', x0: -2, x1: 2, z0: SZ1, z1: KD + 0.45, floor: 0, ceil: (x, z) => 1.95 - 0.35 * (z + 0.05) / (KD + 0.45) - 0.04 },
+  { name: 'kitchen', x0: -2, x1: 2, z0: SZ1, z1: KD + 0.45, floor: 0, ceil: (x, z) => roofY(z) - 0.04 },
+  // the beach is the OUTSIDE fallback below; these are the parts of it you can't walk on
+  { name: 'sea', x0: -90, x1: 90, z0: SHORE, z1: 90, floor: 0, ceil: 6, solidBelow: 0.7 },
+  { name: 'river', x0: RIV0, x1: RIV1, z0: -90, z1: SHORE, floor: 0, ceil: 6, solidBelow: 0.7 },
+  { name: 'forest', x0: -90, x1: 90, z0: -90, z1: FOREST_Z, floor: 0, ceil: 6, solidBelow: Infinity },
+  { name: 'forest across the river', x0: -90, x1: RIV0, z0: FOREST_Z, z1: SHORE, floor: 0, ceil: 6, solidBelow: Infinity },
 ];
-const OUTSIDE = { name: 'yard', floor: 0, ceil: 4 }, BOUNDS = [-6.5, 6.5, SZ0, 8];
+const OUTSIDE = { name: 'beach', floor: 0, ceil: 6 }, BOUNDS = [-40, 40, -40, 45];
+// walls and furniture inside the buildings stop at the roof, so you can walk and fly over the rooftops
+for (const b of blockers.concat([doorBlock])) if (b[0] >= -3.2 && b[1] <= 3.2 && b[2] >= -6.7 && b[3] <= 4.6 && (b[5] ?? Infinity) === Infinity) { b[4] = b[4] || 0; b[5] = 1.96; }
 const World = {
   // zone under (x,z) for something whose feet are at y: the first listed zone that contains the point and whose floor is reachable
   zoneAt(x, z, y = 0) {
-    for (const zn of ZONES) if (x >= zn.x0 && x <= zn.x1 && z >= zn.z0 && z <= zn.z1 && zn.floor <= y + STEP) return zn;
+    for (const zn of ZONES) if (x >= zn.x0 && x <= zn.x1 && z >= zn.z0 && z <= zn.z1 && World.floorAt(zn, x, z) <= y + STEP) return zn;
     return OUTSIDE;
   },
+  floorAt(zn, x, z) { return typeof zn.floor === 'function' ? zn.floor(x, z) : zn.floor; },
   ceilAt(zn, x, z) { return typeof zn.ceil === 'function' ? zn.ceil(x, z) : zn.ceil; },
-  // can a body (feet at y) occupy (x,z)? false under a too-low ceiling or at a ledge too high to step onto
-  fits(x, z, y) { const zn = World.zoneAt(x, z, y); return zn.floor <= y + STEP && y + PH <= World.ceilAt(zn, x, z) + 1e-3; },
+  // can a body (feet at y) occupy (x,z)? false under a too-low ceiling, at a ledge too high to step onto, or in water/forest
+  fits(x, z, y) { const zn = World.zoneAt(x, z, y); return World.floorAt(zn, x, z) <= y + STEP && y + PH <= World.ceilAt(zn, x, z) + 1e-3 && !(y < (zn.solidBelow || 0)); },
+  // is there ground to come down on here (not water)?
+  canLand(x, z) { return !(World.zoneAt(x, z, 99).solidBelow > 0) && !(World.zoneAt(x, z, 0).solidBelow > 0); },
   // push a circle (radius PR, feet at y) out of every blocker it overlaps in height
   collide(x, z, y = 0) {
     const list = doorAngle > -0.7 ? blockers.concat([doorBlock]) : blockers;
@@ -1149,6 +1696,9 @@ const GRAV = 9.5, JUMP_V = 2.6, FLY_V = 1.3, WALK_V = 1.4;
 const mover = { vy: 0, grounded: true, flying: false, latch: false, squash: 0 };
 const bFly = $('bFly'), bJump = $('bJump'), bLower = $('bLower'), flyInd = $('flyInd');
 function setFly(on) {
+  if (!on && mover.flying && !World.canLand(player.position.x, player.position.z)) {   // over water: keep flying
+    flyInd.textContent = '✈ can\'t land on water'; clearTimeout(setFly.t); setFly.t = setTimeout(() => { flyInd.textContent = '✈ flying'; }, 1800); return;
+  }
   mover.flying = on; mover.vy = 0; mover.grounded = false;
   bFly.setAttribute('aria-pressed', on); flyInd.hidden = !on; bLower.hidden = !on;
   bJump.textContent = on ? 'Rise' : 'Jump'; bJump.setAttribute('aria-label', on ? 'Rise (Space)' : 'Jump (Space)');
@@ -1171,12 +1721,12 @@ function walk(dt) {
     if (!keys.u) mover.latch = false;
     mover.vy -= GRAV * dt; p.y += mover.vy * dt;
   }
-  const zn = World.zoneAt(x, z, p.y), ceil = World.ceilAt(zn, x, z);
+  const zn = World.zoneAt(x, z, p.y), ceil = World.ceilAt(zn, x, z), floor = Math.max(World.floorAt(zn, x, z), mover.flying ? zn.solidBelow || 0 : 0);
   if (p.y + PH > ceil) { p.y = ceil - PH; mover.vy = Math.min(0, mover.vy); }       // bonk, no passing through ceilings
-  if (p.y <= zn.floor) {
+  if (p.y <= floor) {
     if (!mover.flying && !mover.grounded && mover.vy < -1) mover.squash = Math.min(1, -mover.vy / 3.5);   // soft landing
-    p.y = zn.floor; mover.vy = 0; mover.grounded = !mover.flying;
-  } else if (p.y > zn.floor + 1e-3) mover.grounded = false;
+    p.y = floor; mover.vy = 0; mover.grounded = !mover.flying;
+  } else if (p.y > floor + 1e-3) mover.grounded = false;
   if (!reduce) { mover.squash = Math.max(0, mover.squash - dt * 4); const q = Math.sin(mover.squash * Math.PI / 2); player.scale.set(1 + q * 0.12, 1 - q * 0.18, 1 + q * 0.12); }
   // follow camera, kept inside rooms and under whatever ceiling it is under
   const fx = Math.sin(heading), fz = Math.cos(heading), inSpeak = z < SZ1;
@@ -1186,7 +1736,7 @@ function walk(dt) {
     desired.z = Math.max(SZ0 + 0.12, Math.min(SZ1 - 0.12, desired.z));
   } else if (x > -2 && x < 2 && z < KD + 0.1) desired.z = Math.max(0.2, desired.z);
   const cz = World.zoneAt(desired.x, desired.z, p.y);
-  desired.y = Math.max(cz.floor + 0.1, Math.min(desired.y, World.ceilAt(cz, desired.x, desired.z) - 0.06));
+  desired.y = Math.max(World.floorAt(cz, desired.x, desired.z) + 0.1, Math.min(desired.y, World.ceilAt(cz, desired.x, desired.z) - 0.06));
   const k = 1 - Math.exp(-dt * 6);
   camera.position.lerp(desired, k);
   camLook.lerp(new THREE.Vector3(x + fx * 0.5, p.y + 0.45, z + fz * 0.5), k);
@@ -1211,22 +1761,28 @@ function frame() {
   }
   doorAngle += (doorTarget - doorAngle) * Math.min(1, dt * 4.5); doorPivot.rotation.y = doorAngle;
   shell.visible = mode === 'orbit' ? view !== 'speak' : (mode === 'tour' ? camera.position.z : player.position.z) >= SZ1;
+  updateWorld(dt, t);
+  const fairyK = 0.35 + 0.65 * tod.night;   // fairy lights: subtle by day, full at night
   if (!reduce) {
     if (frameN++ % 2 === 0) for (const [c, st, ph] of screens) { drawSunset(c.getContext('2d'), 160, 128, t * 1.6 + ph); st.needsUpdate = true; }
     sign.material.opacity = Math.random() < 0.015 ? 0.35 : 1;
-    for (let i = 0; i < fairy.base.length; i++) { const k = 0.55 + 0.45 * Math.sin(t * fairy.speed[i] + fairy.phase[i]); fairy.mesh.setColorAt(i, fairy.tmp.copy(fairy.base[i]).multiplyScalar(k)); }
+    for (let i = 0; i < fairy.base.length; i++) { const k = (0.55 + 0.45 * Math.sin(t * fairy.speed[i] + fairy.phase[i])) * fairyK; fairy.mesh.setColorAt(i, fairy.tmp.copy(fairy.base[i]).multiplyScalar(k)); }
     fairy.mesh.instanceColor.needsUpdate = true;
     for (const b of blinkers) b.m.material.opacity = b.mode === 'blink' ? (Math.sin(t * 4 + b.phase) > -0.3 ? 1 : 0.15) : (Math.random() < 0.02 ? 0.3 : 1);
     coals.color.setHSL(0.06, 1, 0.5 + Math.sin(t * 7) * 0.05 + Math.sin(t * 13) * 0.03).multiplyScalar(2.2);
     for (let i = 0; i < lamps.length; i++) lamps[i].rotation.y = Math.sin(t * 0.4 + i) * 0.25;
-  } else if (frameN++ === 0) for (const [c, st] of screens) { drawSunset(c.getContext('2d'), 160, 128, 0); st.needsUpdate = true; }
-  if (composer) composer.render(); else renderer.render(scene, camera);
+  } else {
+    if (frameN++ === 0) for (const [c, st] of screens) { drawSunset(c.getContext('2d'), 160, 128, 0); st.needsUpdate = true; }
+    if (frameN % 10 === 0) { for (let i = 0; i < fairy.base.length; i++) fairy.mesh.setColorAt(i, fairy.tmp.copy(fairy.base[i]).multiplyScalar(fairyK)); fairy.mesh.instanceColor.needsUpdate = true; }
+  }
+  if (composer && useBloom) composer.render(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
   if (composer) { composer.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight); }
 });
+setTier(quality.tier); setTod('auto');
 setHint(); frame();
 setTimeout(() => $('load').classList.add('done'), 400);
 })();
