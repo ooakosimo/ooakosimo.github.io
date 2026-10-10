@@ -34,8 +34,21 @@ button:disabled{opacity:.35; cursor:default}
 .pad{position:fixed; right:14px; bottom:calc(14px + env(safe-area-inset-bottom,0px)); display:grid; grid-template-columns:repeat(3,54px); grid-template-rows:repeat(2,54px); gap:6px; user-select:none; -webkit-user-select:none}
 .pad[hidden]{display:none}
 .pad button{width:54px; height:54px; padding:0; font-size:20px; border-radius:12px; background:var(--panel); touch-action:none}
-.pad .up{grid-column:2}
+.pad{grid-template-columns:repeat(4,54px)}
+.pad .up{grid-column:2; grid-row:1}
 .pad .row2{grid-row:2}
+.pad .fly{grid-column:1; grid-row:1; font-size:12px}
+.pad .jump{grid-column:4; grid-row:1; font-size:12px}
+.pad .lower{grid-column:4; grid-row:2; font-size:12px}
+.pad .lower[hidden]{display:none}
+.pad .fly[aria-pressed="true"]{background:var(--cyan); color:#06202a; border-color:var(--cyan)}
+.flyind{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--cyan); color:var(--cyan); border-radius:999px; padding:5px 12px; font-size:12px; font-weight:600; letter-spacing:.06em}
+.flyind[hidden]{display:none}
+body.clean .flyind{display:none}
+@media (max-width: 640px){
+  body.walking .hud{bottom:auto; top:calc(10px + env(safe-area-inset-top,0px))}
+  body.walking .flyind{top:auto; left:auto; right:14px; transform:none; bottom:calc(14px + 124px + env(safe-area-inset-bottom,0px))}
+}
 .load{position:fixed; inset:0; display:grid; place-items:center; background:#140a24; color:var(--pink); font-family:"Mr Dafoe",cursive; font-size:40px; transition:opacity .8s}
 .load.done{opacity:0; pointer-events:none}
 .msgs{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); right:10px; width:min(330px, calc(100vw - 20px)); max-height:45vh; overflow:auto; display:flex; flex-direction:column; gap:6px; z-index:5}
@@ -74,7 +87,11 @@ body.clean canvas{cursor:none}
   <button class="row2" data-k="l" aria-label="Turn left">◀</button>
   <button class="row2" data-k="b" aria-label="Back">▼</button>
   <button class="row2" data-k="r" aria-label="Turn right">▶</button>
+  <button class="fly" id="bFly" aria-pressed="false" aria-label="Fly mode (F)">Fly</button>
+  <button class="jump" id="bJump" data-k="u" aria-label="Jump (Space)">Jump</button>
+  <button class="lower" id="bLower" data-k="d" aria-label="Lower (Shift)" hidden>Lower</button>
 </div>
+<div class="flyind" id="flyInd" role="status" hidden>✈ flying</div>
 <div class="msgs" id="msgs" role="status" aria-live="polite"></div>
 <div class="fade" id="fade" aria-hidden="true"></div>
 
@@ -140,7 +157,7 @@ function boxB(w, h, d, mat, x, y, z, parent = scene) { const m = new THREE.Mesh(
 function cyl(rt, rb, h, mat, x, y, z, seg = 16, parent = scene) { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat); m.position.set(x, y + h / 2, z); parent.add(m); return m; }
 function plane(w, h, mat, x, y, z, ry = 0, parent = scene) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m; }
 const blockers = [];
-const block = (x0, x1, z0, z1) => blockers.push([x0, x1, z0, z1]);
+const block = (x0, x1, z0, z1, y0 = 0, y1 = Infinity) => blockers.push([x0, x1, z0, z1, y0, y1]);   // y range optional: default blocks at every height, like a wall
 
 // ================================================================ textures
 const dirtT = ctex(256, 256, (g, w, h) => { g.fillStyle = '#2a281e'; g.fillRect(0, 0, w, h); speckle(g, w, h, 1400, ['#38361f', '#1c1b14', '#2f3a26', '#433d2a']); }, 7, 7);
@@ -875,7 +892,9 @@ function goView(name) {
 }
 function setHint() {
   hint.textContent = mode === 'walk'
-    ? 'W/S or ▲▼ to move, A/D or ◀▶ to turn. Walk up to the fridge. Drop files onto the page to hang art.'
+    ? (mover.flying
+      ? 'Flying: W/S or ▲▼ to move, A/D or ◀▶ to turn, Space or Jump to rise, Shift or Lower to sink. F to land.'
+      : 'W/S or ▲▼ to move, A/D or ◀▶ to turn, Space to jump, F to fly. Walk up to the fridge. Drop files onto the page to hang art.')
     : mode === 'tour'
       ? 'Cinematic tour' + (reduce ? ' (still shots, since reduced motion is on)' : '') + '. T or Esc stops it. C = clean mode for recording (C or Esc to exit).'
       : 'Drag to look, scroll to zoom. Tap the fridge to open it. Tap a frame or drop images/videos onto the page to hang your art. Keys: T tour, C clean mode, N frame numbers, M panel.';
@@ -885,7 +904,8 @@ function setMode(m) {
   bWalk.setAttribute('aria-pressed', m === 'walk'); bWalk.textContent = m === 'walk' ? 'Stop walking' : 'Walk';
   bTour.setAttribute('aria-pressed', m === 'tour'); bTour.textContent = m === 'tour' ? 'Stop tour' : 'Tour';
   bKitchen.disabled = bSpeak.disabled = m === 'walk';
-  pad.hidden = m !== 'walk';
+  pad.hidden = m !== 'walk'; document.body.classList.toggle('walking', m === 'walk');
+  if (m !== 'walk' && mover.flying) setFly(false);
   controls.enabled = m === 'orbit';
   player.visible = m !== 'tour';
   fadeEl.style.opacity = 0;
@@ -959,8 +979,8 @@ bNums.addEventListener('click', () => setNums(bNums.getAttribute('aria-pressed')
 function toggleHud() { const c = hud.classList.toggle('collapsed'); $('fold').setAttribute('aria-expanded', !c); $('fold').textContent = c ? '+' : '–'; }
 $('fold').addEventListener('click', toggleHud);
 
-const keys = { f: 0, b: 0, l: 0, r: 0 };
-const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+const keys = { f: 0, b: 0, l: 0, r: 0, u: 0, d: 0 };   // u = Space/Jump (rise when flying), d = Shift/Lower
+const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', Space: 'u', ShiftLeft: 'd', ShiftRight: 'd' };
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -969,12 +989,13 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN') { bNums.click(); return; }
   if (e.code === 'KeyT') { bTour.click(); return; }
   if (e.code === 'Escape') { if (document.body.classList.contains('clean')) setClean(false); else if (mode === 'tour') setMode('orbit'); return; }
+  if (e.code === 'KeyF' && mode === 'walk') { setFly(!mover.flying); return; }
   const k = KEYMAP[e.code];
   if (k && mode === 'walk') { keys[k] = 1; e.preventDefault(); }
 });
-addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = 0; });
+addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { keys[k] = 0; if (mode === 'walk') e.preventDefault(); } });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
-pad.querySelectorAll('button').forEach(b => {
+pad.querySelectorAll('button[data-k]').forEach(b => {
   const k = b.dataset.k;
   b.addEventListener('pointerdown', e => { keys[k] = 1; b.setPointerCapture(e.pointerId); e.preventDefault(); });
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => { keys[k] = 0; });
@@ -1084,36 +1105,91 @@ addEventListener('drop', e => {
   hangFiles(files, hit ? hit.object.userData.idx : nextFree());
 });
 
-// ================================================================ walking + collision
-function collide(x, z) {
-  const r = 0.2, list = doorAngle > -0.7 ? blockers.concat([doorBlock]) : blockers;
-  for (let it = 0; it < 3; it++) for (const b of list) {
-    const cx = Math.max(b[0], Math.min(x, b[1])), cz = Math.max(b[2], Math.min(z, b[3]));
-    const dx = x - cx, dz = z - cz, d2 = dx * dx + dz * dz;
-    if (d2 >= r * r) continue;
-    if (d2 > 1e-9) { const d = Math.sqrt(d2); x = cx + dx / d * r; z = cz + dz / d * r; }
-    else {
-      const pen = [[x - b[0] + r, -1, 0], [b[1] - x + r, 1, 0], [z - b[2] + r, 0, -1], [b[3] - z + r, 0, 1]].sort((p, q) => p[0] - q[0])[0];
-      x += pen[1] * pen[0]; z += pen[2] * pen[0];
+// ================================================================ world: floors, ceilings, collision (the one place movement asks)
+// A zone is a box on the ground plan with a floor height and a ceiling (a number, or a function of x,z for sloped roofs).
+// To add an area: push a zone. For a second floor: add a zone with floor: <height> (plus stairs/ramp zones whose floor
+// rises in steps of <= STEP) and lower the ceiling of the zone underneath; list higher/smaller zones first.
+// Walls and furniture are `blockers` (see block() at the top); give them a y range to make them jump-over/fly-over-able.
+const PH = 0.8, PR = 0.2, STEP = 0.12;                     // player height, radius, max step-up
+const ZONES = [
+  { name: 'fridge door', x0: FX - FW / 2, x1: FX + FW / 2, z0: SZ1 - 0.02, z1: FD, floor: 0, ceil: FH - 0.03 },
+  { name: 'speakeasy', x0: SX0, x1: SX1, z0: SZ0, z1: SZ1, floor: 0, ceil: SH },
+  { name: 'kitchen', x0: -2, x1: 2, z0: SZ1, z1: KD + 0.45, floor: 0, ceil: (x, z) => 1.95 - 0.35 * (z + 0.05) / (KD + 0.45) - 0.04 },
+];
+const OUTSIDE = { name: 'yard', floor: 0, ceil: 4 }, BOUNDS = [-6.5, 6.5, SZ0, 8];
+const World = {
+  // zone under (x,z) for something whose feet are at y: the first listed zone that contains the point and whose floor is reachable
+  zoneAt(x, z, y = 0) {
+    for (const zn of ZONES) if (x >= zn.x0 && x <= zn.x1 && z >= zn.z0 && z <= zn.z1 && zn.floor <= y + STEP) return zn;
+    return OUTSIDE;
+  },
+  ceilAt(zn, x, z) { return typeof zn.ceil === 'function' ? zn.ceil(x, z) : zn.ceil; },
+  // can a body (feet at y) occupy (x,z)? false under a too-low ceiling or at a ledge too high to step onto
+  fits(x, z, y) { const zn = World.zoneAt(x, z, y); return zn.floor <= y + STEP && y + PH <= World.ceilAt(zn, x, z) + 1e-3; },
+  // push a circle (radius PR, feet at y) out of every blocker it overlaps in height
+  collide(x, z, y = 0) {
+    const list = doorAngle > -0.7 ? blockers.concat([doorBlock]) : blockers;
+    for (let it = 0; it < 3; it++) for (const b of list) {
+      if (y >= (b[5] ?? Infinity) || y + PH <= (b[4] ?? 0)) continue;
+      const cx = Math.max(b[0], Math.min(x, b[1])), cz = Math.max(b[2], Math.min(z, b[3]));
+      const dx = x - cx, dz = z - cz, d2 = dx * dx + dz * dz;
+      if (d2 >= PR * PR) continue;
+      if (d2 > 1e-9) { const d = Math.sqrt(d2); x = cx + dx / d * PR; z = cz + dz / d * PR; }
+      else {
+        const pen = [[x - b[0] + PR, -1, 0], [b[1] - x + PR, 1, 0], [z - b[2] + PR, 0, -1], [b[3] - z + PR, 0, 1]].sort((p, q) => p[0] - q[0])[0];
+        x += pen[1] * pen[0]; z += pen[2] * pen[0];
+      }
     }
-  }
-  return [Math.max(-6.5, Math.min(6.5, x)), Math.max(SZ0, Math.min(8, z))];
+    return [Math.max(BOUNDS[0], Math.min(BOUNDS[1], x)), Math.max(BOUNDS[2], Math.min(BOUNDS[3], z))];
+  },
+};
+
+// ================================================================ walking, jumping, flying
+const GRAV = 9.5, JUMP_V = 2.6, FLY_V = 1.3, WALK_V = 1.4;
+const mover = { vy: 0, grounded: true, flying: false, latch: false, squash: 0 };
+const bFly = $('bFly'), bJump = $('bJump'), bLower = $('bLower'), flyInd = $('flyInd');
+function setFly(on) {
+  mover.flying = on; mover.vy = 0; mover.grounded = false;
+  bFly.setAttribute('aria-pressed', on); flyInd.hidden = !on; bLower.hidden = !on;
+  bJump.textContent = on ? 'Rise' : 'Jump'; bJump.setAttribute('aria-label', on ? 'Rise (Space)' : 'Jump (Space)');
+  setHint();
 }
+bFly.addEventListener('click', () => setFly(!mover.flying));
 const camLook = new THREE.Vector3(); const desired = new THREE.Vector3();
 function walk(dt) {
+  const p = player.position;
   heading += (keys.l - keys.r) * 2.3 * dt;
-  const v = (keys.f - keys.b) * 1.4;
-  const [x, z] = collide(player.position.x + Math.sin(heading) * v * dt, player.position.z + Math.cos(heading) * v * dt);
-  player.position.x = x; player.position.z = z; player.rotation.y = heading;
+  const v = (keys.f - keys.b) * WALK_V;
+  // horizontal: slide out of blockers, then refuse to enter space we don't fit in (low ceiling, high ledge)
+  let [x, z] = World.collide(p.x + Math.sin(heading) * v * dt, p.z + Math.cos(heading) * v * dt, p.y);
+  if (!World.fits(x, z, p.y)) { if (World.fits(x, p.z, p.y)) z = p.z; else if (World.fits(p.x, z, p.y)) x = p.x; else { x = p.x; z = p.z; } }
+  p.x = x; p.z = z; player.rotation.y = heading;
+  // vertical: gravity + jump, or free flight
+  if (mover.flying) p.y += (keys.u - keys.d) * FLY_V * dt;
+  else {
+    if (keys.u && mover.grounded && !mover.latch) { mover.vy = JUMP_V; mover.grounded = false; mover.latch = true; }
+    if (!keys.u) mover.latch = false;
+    mover.vy -= GRAV * dt; p.y += mover.vy * dt;
+  }
+  const zn = World.zoneAt(x, z, p.y), ceil = World.ceilAt(zn, x, z);
+  if (p.y + PH > ceil) { p.y = ceil - PH; mover.vy = Math.min(0, mover.vy); }       // bonk, no passing through ceilings
+  if (p.y <= zn.floor) {
+    if (!mover.flying && !mover.grounded && mover.vy < -1) mover.squash = Math.min(1, -mover.vy / 3.5);   // soft landing
+    p.y = zn.floor; mover.vy = 0; mover.grounded = !mover.flying;
+  } else if (p.y > zn.floor + 1e-3) mover.grounded = false;
+  if (!reduce) { mover.squash = Math.max(0, mover.squash - dt * 4); const q = Math.sin(mover.squash * Math.PI / 2); player.scale.set(1 + q * 0.12, 1 - q * 0.18, 1 + q * 0.12); }
+  // follow camera, kept inside rooms and under whatever ceiling it is under
   const fx = Math.sin(heading), fz = Math.cos(heading), inSpeak = z < SZ1;
-  desired.set(x - fx * 1.45, 1.05, z - fz * 1.45);
+  desired.set(x - fx * 1.45, p.y + 1.05, z - fz * 1.45);
   if (inSpeak) {
     desired.x = Math.max(SX0 + 0.12, Math.min(SX1 - 0.12, desired.x));
     desired.z = Math.max(SZ0 + 0.12, Math.min(SZ1 - 0.12, desired.z));
   } else if (x > -2 && x < 2 && z < KD + 0.1) desired.z = Math.max(0.2, desired.z);
+  const cz = World.zoneAt(desired.x, desired.z, p.y);
+  desired.y = Math.max(cz.floor + 0.1, Math.min(desired.y, World.ceilAt(cz, desired.x, desired.z) - 0.06));
   const k = 1 - Math.exp(-dt * 6);
   camera.position.lerp(desired, k);
-  camLook.lerp(new THREE.Vector3(x + fx * 0.5, 0.45, z + fz * 0.5), k);
+  camLook.lerp(new THREE.Vector3(x + fx * 0.5, p.y + 0.45, z + fz * 0.5), k);
   camera.lookAt(camLook);
   doorTarget = Math.hypot(x - FX, z - 0.15) < 1.0 ? -1.9 : 0;
 }
