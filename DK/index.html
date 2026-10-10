@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dirty Kitchen v6</title>
+<title>Dirty Kitchen v6.1</title>
 <link rel="icon" href="/gumamela.gif" type="image/gif">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&family=Mr+Dafoe&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -287,19 +287,7 @@ const hemi = new THREE.HemisphereLight('#6b5a9e', '#1a1408', 0.5); scene.add(hem
 const sunLight = new THREE.DirectionalLight('#8aa0ff', 0.35); sunLight.position.set(-3, 5, 4); scene.add(sunLight);   // sun by day, moon by night
 
 // ================================================================ yard
-// v6: the yard is a patch of packed earth on the sand, fading out at the edges
-// (seed saved/restored so the frame layout, and so every frame number, stays exactly as in v5)
-const seedV5 = seed;
-const yardT = ctex(512, 512, (g, w, h) => {
-  g.fillStyle = '#5a4b33'; g.fillRect(0, 0, w, h); speckle(g, w, h, 5000, ['#4d4029', '#6b5a3c', '#3f3a26', '#75644a'], 3);
-  g.globalCompositeOperation = 'destination-in';
-  const r = g.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(0,0,0,1)'); r.addColorStop(0.75, 'rgba(0,0,0,.55)'); r.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = r; g.fillRect(0, 0, w, h);
-});
-seed = seedV5;
-const yard = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), std('#ffffff', { map: yardT, transparent: true, depthWrite: false }));
-yard.rotation.x = -Math.PI / 2; yard.position.set(0, -0.003, 1); scene.add(yard);
-yard.material.polygonOffset = true; yard.material.polygonOffsetFactor = -1; yard.material.polygonOffsetUnits = -2;   // sits on the v6 sand
+// v6.1: outside the roofed kitchen the floor is just the beach sand (see the world section), running right up to the slab
 const terra = std('#a2502e'), leafM = std('#2f6b35', { side: THREE.DoubleSide }), leafD = std('#24552b', { side: THREE.DoubleSide });
 function potted(x, z, s = 1) {
   cyl(0.11 * s, 0.08 * s, 0.16 * s, terra, x, 0, z);
@@ -919,10 +907,10 @@ const nz = (t, s) => (Math.sin(t * 1.7 + s) + Math.sin(t * 2.9 + s * 1.3) * 0.6 
 // ---- ground: sand, wet sand at the shore, forest floor
 {
   const sandT = ctex(256, 256, (g, w, h) => { g.fillStyle = '#c4a87c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 2600, ['#cfb68c', '#b49a70', '#d6c39c', '#a98f66', '#9e8560'], 2); }, 40, 26);
-  const sand = new THREE.Mesh(new THREE.PlaneGeometry(180, 100 + SHORE + 1), std('#ffffff', { map: sandT, roughness: 1 }));   // stops at the shore, never under the sea
-  sand.rotation.x = -Math.PI / 2; sand.position.set(0, -0.06, (SHORE + 1 - 100) / 2); scene.add(sand);
-  const strip = (w, d, x, z, c, y = -0.04) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), std(c, { roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m; };
-  strip(180, 1.8, 0, SHORE - 0.7, '#9c8360');                                          // wet sand
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(180, 100 + SHORE), std('#ffffff', { map: sandT, roughness: 1 }));   // stops at the shore, never over the sea
+  sand.rotation.x = -Math.PI / 2; sand.position.set(0, -0.005, (SHORE - 100) / 2); scene.add(sand);
+  const strip = (w, d, x, z, c, y = -0.004) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), std(c, { roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); scene.add(m); return m; };
+  strip(180, 1.6, 0, SHORE - 0.8, '#9c8360');                                          // wet sand
   strip(180, 70, 0, FOREST_Z - 35, '#2c3520');                                         // forest floor
   strip(60, SHORE - FOREST_Z, RIV0 - 30.6, (SHORE + FOREST_Z) / 2, '#2c3520');         // forest floor across the river
   strip(0.9, SHORE - FOREST_Z, RIV1 + 0.45, (SHORE + FOREST_Z) / 2, '#9c8360');        // sandy river bank, near side
@@ -965,7 +953,7 @@ const riverT = ctex(128, 256, (g, w, h) => {
 }, 1, 10);
 const river = new THREE.Mesh(new THREE.PlaneGeometry(RIV1 - RIV0, SHORE - FOREST_Z + 30), std('#ffffff', { map: riverT, roughness: 0.25, metalness: 0.1 }));
 river.material.polygonOffset = true; river.material.polygonOffsetFactor = -2; river.material.polygonOffsetUnits = -2;
-river.rotation.x = -Math.PI / 2; river.position.set((RIV0 + RIV1) / 2, -0.03, (SHORE + FOREST_Z - 30) / 2 + 0.6); scene.add(river);
+river.rotation.x = -Math.PI / 2; river.position.set((RIV0 + RIV1) / 2, -0.002, (SHORE + FOREST_Z - 30) / 2 + 0.6); scene.add(river);
 
 // ---- trees: one geometry per species, drawn with instancing
 function mergeParts(parts) {   // [{ geo, color, m? }] -> one non-indexed geometry with vertex colours
@@ -986,7 +974,7 @@ const M4 = (x, y, z, rx = 0, ry = 0, rz = 0, s = 1) => new THREE.Matrix4().compo
 function plant(geo, mat, list, tint) {
   for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }   // shuffled, so thinning is even
   const im = new THREE.InstancedMesh(geo, mat, list.length), m = new THREE.Matrix4(), c = new THREE.Color();
-  list.forEach((it, i) => { im.setMatrixAt(i, M4(it.x, it.y || 0, it.z, it.rx || 0, it.ry || 0, it.rz || 0, it.s)); if (tint) im.setColorAt(i, c.set(tint(it))); });
+  list.forEach((it, i) => { im.setMatrixAt(i, M4(it.x, it.y || 0, it.z, it.rx || 0, it.ry || 0, it.rz || 0, it.s)); if (tint) im.setColorAt(i, c.setStyle(tint(it).replace(/\d+\.\d+/g, n => Math.round(+n)))); });   // three r128 only parses whole-number hsl()
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
   scene.add(im); instGroups.push({ im, total: list.length }); return im;
 }
@@ -994,6 +982,7 @@ const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.
 // keep trees off the buildings, the yard, the path to the sea, the river and the sea
 const clearSpot = (x, z) => !(x > -4.2 && x < 4.4 && z > -7.4 && z < 5.6) && !(x > -4.5 && x < 7.5 && z > 4 && z < SHORE) && !(x > RIV0 - 0.8 && x < RIV1 + 0.9) && z < SHORE - 1.2;
 
+let PALM_GEO;   // shared with Kurma Island
 // coconut palm: ringed curved trunk + drooping fronds + coconuts
 {
   const parts = [], segs = 9, curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 2.6, 0.45), new THREE.Vector3(0.3, 4.9, 1.35));
@@ -1024,7 +1013,8 @@ const clearSpot = (x, z) => !(x > -4.2 && x < 4.4 && z > -7.4 && z < 5.6) && !(x
     if (!clearSpot(x, z) || spots.some(s => Math.hypot(s.x - x, s.z - z) < 2.2)) continue;
     spots.push({ x, z, ry: rnd() * Math.PI * 2, s: 0.85 + rnd() * 0.35 });
   }
-  plant(mergeParts(parts), treeMat, spots, () => `hsl(${90 + rnd() * 30},${30 + rnd() * 20}%,${80 + rnd() * 15}%)`);
+  PALM_GEO = mergeParts(parts);
+  plant(PALM_GEO, treeMat, spots, () => `hsl(${90 + rnd() * 30},${30 + rnd() * 20}%,${80 + rnd() * 15}%)`);
   for (const s of spots) block(s.x - 0.13, s.x + 0.13, s.z - 0.13, s.z + 0.13);
 }
 // agoho (casuarina): tall thin trunk, wispy foliage of drooping needle strands, not a regular cone
@@ -1072,6 +1062,119 @@ const clearSpot = (x, z) => !(x > -4.2 && x < 4.4 && z > -7.4 && z < 5.6) && !(x
   }, 6, 1);
   const wm = new THREE.MeshLambertMaterial({ map: wallT, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide });
   plane(120, 9, wm, 0, 4.3, FOREST_Z - 18); const w2 = plane(60, 9, wm, RIV0 - 22, 4.3, 0, Math.PI / 2);
+}
+
+// ---- merienda garden set on the sand, front-left of the kitchen: weathered table, mismatched seats, a faded parasol
+const GARDEN = { x: -2.3, z: 6.3 };
+{
+  const { x: GX, z: GZ } = GARDEN;
+  const weatherT = ctex(256, 64, (g, w, h) => {
+    g.fillStyle = '#9b9182'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 50; i++) { g.strokeStyle = `rgba(${70 + rnd() * 40},${62 + rnd() * 30},${50 + rnd() * 25},${0.25 + rnd() * 0.35})`; g.lineWidth = 1 + rnd() * 2; const y = rnd() * h; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + (rnd() - .5) * 8, w * 0.7, y + (rnd() - .5) * 8, w, y + (rnd() - .5) * 4); g.stroke(); }
+    g.fillStyle = 'rgba(40,30,20,.5)'; g.beginPath(); g.ellipse(w * 0.3, h * 0.5, 6, 3, 0.3, 0, Math.PI * 2); g.fill();
+  });
+  const old = std('#ffffff', { map: weatherT, roughness: 0.95 }), oldD = std('#7d7366', { roughness: 0.95 });
+  const g = new THREE.Group(); g.position.set(GX, 0, GZ); g.rotation.y = 0.12; scene.add(g);
+  for (let i = 0; i < 5; i++) { const p = boxB(0.95, 0.025, 0.1, old, (rnd() - .5) * 0.02, 0.37, -0.22 + i * 0.11, g); p.rotation.y = (rnd() - .5) * 0.03; p.rotation.z = (rnd() - .5) * 0.015; }   // planks with gaps
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) boxB(0.05, 0.37, 0.05, oldD, sx * 0.4, 0, sz * 0.2, g);
+  boxB(0.85, 0.03, 0.03, oldD, 0, 0.12, 0, g);
+  // merienda: turon on a banana leaf, kakanin, a pitcher of calamansi juice, glasses, a thermos
+  const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.16), std('#3f8a3a', { roughness: 0.6, side: THREE.DoubleSide })); leaf.rotation.x = -Math.PI / 2; leaf.position.set(-0.15, 0.398, 0.02); g.add(leaf);
+  for (let i = 0; i < 5; i++) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.1, 8), std('#c98a3a', { roughness: 0.5 })); t.rotation.z = Math.PI / 2; t.rotation.y = 0.3 + i * 0.1; t.position.set(-0.22 + i * 0.035, 0.413, 0.02 + (i % 2) * 0.03); g.add(t); }
+  cyl(0.06, 0.06, 0.012, std('#f4f1e6'), 0.12, 0.395, -0.06, 18, g);
+  [['#7b3fd6', 0.08], ['#f4efe2', 0.13], ['#3fae5a', 0.18]].forEach(([c, dx]) => boxB(0.035, 0.022, 0.035, std(c, { roughness: 0.7 }), dx, 0.407, -0.07, g));   // ube, puto, pandan
+  cyl(0.035, 0.04, 0.12, std('#e6f7ff', { transparent: true, opacity: 0.45, roughness: 0.05 }), 0.3, 0.395, 0.08, 14, g);
+  cyl(0.033, 0.038, 0.08, std('#ffd23f', { transparent: true, opacity: 0.75, roughness: 0.2 }), 0.3, 0.397, 0.08, 14, g);
+  for (const [dx, dz] of [[0.22, -0.12], [0.38, -0.02], [0.05, 0.14]]) cyl(0.018, 0.016, 0.05, std('#e6f7ff', { transparent: true, opacity: 0.5, roughness: 0.05 }), dx, 0.395, dz, 10, g);
+  cyl(0.035, 0.035, 0.14, std('#d1171f', { roughness: 0.35 }), -0.36, 0.395, -0.12, 14, g);
+  // mismatched seats: green monobloc, a long bangko, a rattan chair, an upturned bayong-yellow crate
+  const wp = (lx, lz) => new THREE.Vector3(lx, 0, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.12).add(new THREE.Vector3(GX, 0, GZ));
+  { const p = wp(-0.15, -0.45); monobloc(p.x, p.z, 0.12, '#2f8f5a'); }
+  { const p = wp(0.05, 0.45); bangko(p.x, p.z, 0.9, 0.12); }
+  { const p = wp(-0.68, 0.0), r = new THREE.Group(); r.position.copy(p); r.rotation.y = 0.12 + Math.PI / 2; scene.add(r);
+    const rattan = std('#b98a4e', { roughness: 0.9 }), rattanD = std('#8a6234', { roughness: 0.9 });
+    boxB(0.24, 0.03, 0.22, rattan, 0, 0.2, 0, r);
+    const back = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.26, 12, 1, true, Math.PI * 0.15, Math.PI * 0.7), std('#b98a4e', { roughness: 0.9, side: THREE.DoubleSide })); back.rotation.y = Math.PI; back.position.set(0, 0.35, 0.02); r.add(back);
+    for (const [lx, lz] of [[-0.1, -0.09], [0.1, -0.09], [-0.1, 0.09], [0.1, 0.09]]) boxB(0.022, 0.2, 0.022, rattanD, lx, 0, lz, r); }
+  { const p = wp(0.68, 0.05); const c = boxB(0.18, 0.14, 0.18, std('#e8b23a', { roughness: 0.8 }), p.x, 0, p.z); c.rotation.y = 0.5; }
+  // faded beach parasol, a little tilted, stuck in the sand
+  const pg = new THREE.Group(); pg.position.set(GX + 0.1, 0, GZ - 0.05); pg.rotation.set(0.08, 0, -0.06); scene.add(pg);
+  cyl(0.012, 0.012, 1.3, std('#d8d2c4', { metalness: 0.4, roughness: 0.4 }), 0, 0, 0, 8, pg);
+  const canT = ctex(256, 32, (g2, w, h) => { const cs = ['#d9534f', '#f4ead2', '#3a8fb7', '#f4ead2', '#e8b23a', '#f4ead2', '#d9534f', '#f4ead2']; cs.forEach((c, i) => { g2.fillStyle = c; g2.fillRect(i * w / 8, 0, w / 8 + 1, h); }); g2.fillStyle = 'rgba(255,255,255,.18)'; g2.fillRect(0, 0, w, h); });
+  const canopy = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.3, 8, 1, true), std('#ffffff', { map: canT, roughness: 0.8, side: THREE.DoubleSide })); canopy.position.y = 1.32; pg.add(canopy);
+  block(GX - 0.55, GX + 0.55, GZ - 0.3, GZ + 0.3);                              // table
+  { const p = wp(-0.15, -0.45); block(p.x - 0.13, p.x + 0.13, p.z - 0.12, p.z + 0.12); }
+  { const p = wp(0.05, 0.45); block(p.x - 0.47, p.x + 0.47, p.z - 0.08, p.z + 0.08); }
+  { const p = wp(-0.68, 0.0); block(p.x - 0.13, p.x + 0.13, p.z - 0.13, p.z + 0.13); }
+  { const p = wp(0.68, 0.05); block(p.x - 0.11, p.x + 0.11, p.z - 0.11, p.z + 0.11); }
+}
+
+// ---- Kurma Island: a little turtle-shaped island offshore. Not walkable (solid in ZONES): you can fly to it, not land.
+// The turtle swims west (toward the river mouth) so the shore sees it in profile: shell dome, head, flippers, all rock.
+const KURMA = { x: 7, z: 40, a: 5.6, b: 2.7, c: 4.1 };   // centre + shell half-length (x), height, half-width (z)
+{
+  const { x: KX, z: KZ, a, b, c } = KURMA;
+  const islandMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  // shell: a rocky half-ellipsoid, rock at the waterline turning green toward the top
+  const shell = new THREE.SphereGeometry(1, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.12);
+  { const pos = shell.attributes.position, col = new Float32Array(pos.count * 3), cc = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      let px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
+      const n = 1 + 0.06 * Math.sin(px * 7.1 + pz * 3.3) + 0.05 * Math.sin(pz * 8.7 - px * 2.1) + 0.04 * Math.sin(py * 11 + px * 5);
+      const ridge = 0.035 * Math.max(0, Math.cos(Math.atan2(pz, px) * 6) ) * py;   // faint scute ribs
+      pos.setXYZ(i, px * a * n, py * b * (n + ridge) - 0.35, pz * c * n);
+      const h = Math.max(0, py);
+      cc.set(h < 0.18 ? '#5b5348' : h < 0.42 ? (i % 3 ? '#6e6556' : '#4f5a3a') : (i % 4 ? '#3f6a32' : '#4d7a3a'));
+      col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
+    }
+    shell.setAttribute('color', new THREE.BufferAttribute(col, 3)); shell.computeVertexNormals(); }
+  const isl = new THREE.Group(); isl.position.set(KX, 0, KZ); scene.add(isl);
+  isl.add(new THREE.Mesh(shell, islandMat));
+  const rock = (sx, sy, sz, x, y, z, ry = 0, rz = 0, col = '#5f574b', det = 1) => {
+    const gg = new THREE.IcosahedronGeometry(1, det), pp = gg.attributes.position;
+    for (let i = 0; i < pp.count; i++) { const k = 1 + (Math.sin(pp.getX(i) * 9 + pp.getZ(i) * 5) * 0.08); pp.setXYZ(i, pp.getX(i) * k, pp.getY(i) * k, pp.getZ(i) * k); }
+    gg.computeVertexNormals();
+    const m = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ color: col, flatShading: true })); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.set(0, ry, rz); isl.add(m); return m;
+  };
+  rock(1.15, 0.65, 0.85, -a - 0.4, 0.15, 0, 0, 0.12);           // neck
+  rock(1.25, 0.95, 1.05, -a - 1.7, 0.55, 0, 0, 0.18, '#686052');  // head, lifted a little
+  rock(0.12, 0.12, 0.12, -a - 2.5, 0.8, 0.55, 0, 0, '#2b2620', 0); rock(0.12, 0.12, 0.12, -a - 2.5, 0.8, -0.55, 0, 0, '#2b2620', 0);   // dark hollows for eyes
+  for (const s of [-1, 1]) {
+    rock(2.3, 0.3, 0.85, -a * 0.45, -0.05, s * (c + 0.9), s * 0.55, 0, '#5a5246');   // front flippers, swept back
+    rock(1.3, 0.25, 0.6, a * 0.7, -0.08, s * (c * 0.75 + 0.5), -s * 0.7, 0, '#5a5246'); // rear flippers
+  }
+  rock(0.9, 0.3, 0.45, a + 0.6, -0.05, 0, 0, 0, '#5a5246');      // tail
+  for (let i = 0; i < 16; i++) { const t = i / 16 * Math.PI * 2; if (Math.abs(Math.cos(t)) > 0.93) continue; rock(0.5 + rnd() * 0.4, 0.35 + rnd() * 0.3, 0.45 + rnd() * 0.3, Math.cos(t) * a * 0.98, 0.0, Math.sin(t) * c * 0.98, t, 0, rnd() < 0.5 ? '#625a4d' : '#575044'); }   // marginal scute rocks
+  const surf = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.12, 64), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.35, depthWrite: false }));
+  surf.rotation.x = -Math.PI / 2; surf.scale.set(a + 0.5, c + 0.6, 1); surf.position.y = 0.06; isl.add(surf); KURMA.surf = surf;
+  // vegetation: shell surface point + normal
+  const onShell = (u, v) => { const px = Math.cos(u) * v, pz = Math.sin(u) * v, py = Math.sqrt(Math.max(0, 1 - v * v)); return { p: new THREE.Vector3(px * a, py * b - 0.35, pz * c), n: new THREE.Vector3(px / a, py / b, pz / c).normalize() }; };
+  const palms = [];
+  for (let i = 0; i < 7; i++) { const { p, n } = onShell(rnd() * Math.PI * 2, 0.15 + rnd() * 0.55); palms.push({ x: KX + p.x, y: p.y - 0.05, z: KZ + p.z, ry: rnd() * 6.28, rx: n.z * 0.5, rz: -n.x * 0.5, s: 0.8 + rnd() * 0.35 }); }
+  plant(PALM_GEO, treeMat, palms, () => `hsl(${90 + rnd() * 30},${30 + rnd() * 20}%,${78 + rnd() * 15}%)`);
+  // anahaw-style fan palms: straight thin trunk, round pleated fans
+  { const parts = [{ geo: new THREE.CylinderGeometry(0.04, 0.06, 2.4, 6), color: '#6d5c48', m: M4(0, 1.2, 0) }];
+    for (let f = 0; f < 8; f++) {
+      const az = f / 8 * Math.PI * 2, tilt = 0.5 + (f % 3) * 0.25, fan = new THREE.CircleGeometry(0.55, 14, -Math.PI * 0.55, Math.PI * 1.1);
+      const pp = fan.attributes.position; for (let i = 0; i < pp.count; i++) { const ang = Math.atan2(pp.getY(i), pp.getX(i)); pp.setZ(i, Math.sin(ang * 14) * 0.03 * Math.hypot(pp.getX(i), pp.getY(i))); }   // pleats
+      fan.computeVertexNormals();
+      const m = new THREE.Matrix4().makeTranslation(0, 0.6, 0).premultiply(new THREE.Matrix4().makeRotationX(-tilt)).premultiply(new THREE.Matrix4().makeRotationY(az)).premultiply(new THREE.Matrix4().makeTranslation(0, 2.35, 0));
+      parts.push({ geo: fan, color: f % 2 ? '#3d7a36' : '#4a8a3c', m });
+    }
+    const spots = [];
+    for (let i = 0; i < 5; i++) { const { p } = onShell(rnd() * Math.PI * 2, 0.2 + rnd() * 0.6); spots.push({ x: KX + p.x, y: p.y - 0.05, z: KZ + p.z, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.4 }); }
+    plant(mergeParts(parts), treeMat, spots, () => `hsl(${90 + rnd() * 25},${30 + rnd() * 20}%,${80 + rnd() * 15}%)`); }
+  // large-leaved vines: heart-shaped leaves carpeting the shell and draping down its sides
+  { const hs = new THREE.Shape(); hs.moveTo(0, -0.5); hs.bezierCurveTo(0.45, -0.15, 0.55, 0.3, 0.22, 0.45); hs.bezierCurveTo(0.08, 0.52, 0.02, 0.42, 0, 0.32); hs.bezierCurveTo(-0.02, 0.42, -0.08, 0.52, -0.22, 0.45); hs.bezierCurveTo(-0.55, 0.3, -0.45, -0.15, 0, -0.5);
+    const leafGeo = new THREE.ShapeGeometry(hs, 6); const lp = leafGeo.attributes.position; for (let i = 0; i < lp.count; i++) lp.setZ(i, -0.12 * lp.getX(i) * lp.getX(i)); leafGeo.computeVertexNormals();
+    const leaves = []; const up = new THREE.Vector3(0, 0, 1), q = new THREE.Quaternion(), e = new THREE.Euler();
+    for (let i = 0; i < 190; i++) {
+      const drape = i % 3 === 0, { p, n } = onShell(rnd() * Math.PI * 2, drape ? 0.8 + rnd() * 0.19 : 0.1 + rnd() * 0.75);
+      q.setFromUnitVectors(up, n).multiply(new THREE.Quaternion().setFromAxisAngle(up, rnd() * 6.28));
+      e.setFromQuaternion(q); leaves.push({ x: KX + p.x + n.x * 0.05, y: p.y + n.y * 0.05, z: KZ + p.z + n.z * 0.05, rx: e.x, ry: e.y, rz: e.z, s: drape ? 0.45 + rnd() * 0.35 : 0.35 + rnd() * 0.4 });
+    }
+    const vineMat = new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide });
+    plant(leafGeo, vineMat, leaves, () => `hsl(${100 + rnd() * 30},${45 + rnd() * 20}%,${22 + rnd() * 16}%)`); }
 }
 
 // ---- future portals (non-functional for now). Both are registered as solid in ZONES.
@@ -1383,6 +1486,7 @@ function updateWorld(dt, t) {
     foam.position.z = SHORE + 0.1 + Math.sin(t * 0.55) * 0.35; foam.material.opacity = 0.45 + 0.25 * Math.sin(t * 0.55 + 1.2); foamT.offset.x = t * 0.004;
     riverT.offset.y = t * 0.02;
   }
+  if (!reduce) { KURMA.surf.material.opacity = 0.22 + 0.12 * Math.sin(t * 0.8); const k = 1 + 0.015 * Math.sin(t * 0.8); KURMA.surf.scale.set((KURMA.a + 0.5) * k, (KURMA.c + 0.6) * k, 1); }
   updateFlock(dt, t); updateFireflies(dt, t); governor();
 }
 nightLights.push([bulbLight, 1.4, 0.35], [yardGlow, 0.55, 0.2]);
@@ -1446,6 +1550,11 @@ todBtns.forEach(b => b.addEventListener('click', () => setTod(b.dataset.tod === 
 // ---- flying tour: yard + fairy lights → fridge → through the door → bar → around the billiards → art walls → mural
 // each key: [camera position, point it looks at]. Keys are spaced roughly evenly so the speed stays steady.
 const TOUR = [
+  [[1.2, 1.5, 12.6], [7, 1.6, 40]],           // from the shore: Kurma Island out on the water
+  [[3.2, 2.4, 17], [7, 1.5, 40]],
+  [[7.5, 3.6, 23.5], [6.5, 1.4, 40]],         // gliding out toward the turtle
+  [[13.5, 5.2, 29], [5, 1.8, 30]],
+  [[16.8, 6.4, 30.6], [1.5, 2.5, 13]],        // turning back toward the beach
   [[19, 7.2, 31], [-1.5, 3.2, -2]],          // wide: sea, beach, palms and the Paper Dusk sky
   [[15.5, 6.0, 26.5], [-1.5, 2.6, -1]],
   [[11, 4.6, 21], [-1, 1.9, 0.5]],
@@ -1653,12 +1762,13 @@ const ZONES = [
   { name: 'speakeasy', x0: SX0, x1: SX1, z0: SZ0, z1: SZ1, floor: 0, ceil: SH },
   { name: 'kitchen', x0: -2, x1: 2, z0: SZ1, z1: KD + 0.45, floor: 0, ceil: (x, z) => roofY(z) - 0.04 },
   // the beach is the OUTSIDE fallback below; these are the parts of it you can't walk on
+  { name: 'Kurma Island', x0: KURMA.x - KURMA.a - 3, x1: KURMA.x + KURMA.a + 1.2, z0: KURMA.z - KURMA.c - 1.4, z1: KURMA.z + KURMA.c + 1.4, floor: 0, ceil: 6, solidBelow: 3.4 },   // fly to it, never land
   { name: 'sea', x0: -90, x1: 90, z0: SHORE, z1: 90, floor: 0, ceil: 6, solidBelow: 0.7 },
   { name: 'river', x0: RIV0, x1: RIV1, z0: -90, z1: SHORE, floor: 0, ceil: 6, solidBelow: 0.7 },
   { name: 'forest', x0: -90, x1: 90, z0: -90, z1: FOREST_Z, floor: 0, ceil: 6, solidBelow: Infinity },
   { name: 'forest across the river', x0: -90, x1: RIV0, z0: FOREST_Z, z1: SHORE, floor: 0, ceil: 6, solidBelow: Infinity },
 ];
-const OUTSIDE = { name: 'beach', floor: 0, ceil: 6 }, BOUNDS = [-40, 40, -40, 45];
+const OUTSIDE = { name: 'beach', floor: 0, ceil: 6 }, BOUNDS = [-40, 40, -40, 58];
 // walls and furniture inside the buildings stop at the roof, so you can walk and fly over the rooftops
 for (const b of blockers.concat([doorBlock])) if (b[0] >= -3.2 && b[1] <= 3.2 && b[2] >= -6.7 && b[3] <= 4.6 && (b[5] ?? Infinity) === Infinity) { b[4] = b[4] || 0; b[5] = 1.96; }
 const World = {
