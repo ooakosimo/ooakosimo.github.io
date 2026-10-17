@@ -19,6 +19,18 @@ The piece began as a visualizer made as a gift for Cody Campbell (CODYTHECAMPBEL
 
 Contract: `0x911d7B92F96Ba7de2C8b833D42EfFF674F7443d4` (Ethereum, ERC-721), token ID 9.
 
+## Which file is which
+
+| File | What it is |
+|---|---|
+| `minted.html` | The file minted on SuperRare, byte for byte. It loads its libraries, cover image and song from `ooakosimo.neocities.org`. This is the reference copy. |
+| `minted-local.html` | The same file with only the web addresses changed to local ones (libraries, cover, song, tab icon). Open it from this folder and it runs without Neocities. |
+| `index.html` | The working copy that GitHub Pages serves at `/keys/`. Its page title differs from the minted file, so treat `minted.html` as the record. |
+| `p5.min.js`, `p5.sound.min.js`, `mqtt.min.js`, `mo-on-keys-coverFIN.png`, `Mo-on-the-keys-v1.mp3` | Libraries, cover and song, kept here so nothing depends on another host. |
+| `remote.html` | Phone / tablet remote. |
+
+SHA-256 of `minted.html`: `5b71b86e8af85e0e828277cac0d9682089927992cc326458eb7dc05adc6a294b`
+
 ## Three ways to run it
 
 - **MIC / BLACKHOLE**: listens to a live room, a performance, or a routed audio source (for example BlackHole virtual audio on macOS). Nothing is recorded or sent anywhere.
@@ -27,27 +39,16 @@ Contract: `0x911d7B92F96Ba7de2C8b833D42EfFF674F7443d4` (Ethereum, ERC-721), toke
 
 ## How to run a copy
 
-1. Download the folder (or the `index.html` and its assets).
-2. Serve it over `http://localhost` or `https` (for example `python3 -m http.server`, then open `http://localhost:8000/`). Microphone access is blocked on plain `file://` pages in most browsers.
+1. Download the folder.
+2. Serve it over `http://localhost` or `https` (for example `python3 -m http.server`, then open `http://localhost:8000/minted-local.html`). Microphone access is blocked on plain `file://` pages in most browsers.
 3. Click one of the three source buttons.
 
 ## Hotkeys
 
 S modulation patch bay · A silent AUTO cruise · Q speed ramp · W sax storm · E circle burst · R white flash · T invert · SPACE freeze motion · P pause or resume music · J normalization · 1 / 2 / 3 visual density · + / - master sensitivity · ; / L microphone gain down or up · 0 hide HUD · F fullscreen · M choose microphone or music before launch.
 
-## Dependencies (important for long-term preservation)
+## Remaining outside dependencies
 
-The HTML file loads these from `ooakosimo.neocities.org/keys/`:
-
-- `p5.min.js`, `p5.sound.min.js`, `mqtt.min.js` (libraries)
-- `mo-on-keys-coverFIN.png` (cover image on the start screen)
-- `Mo-on-the-keys-v1.mp3` (the original song, used by MUSIC / MANUAL)
-- `gumamela.gif` (tab icon, from `ooakosimo.neocities.org`)
-
-The optional phone remote talks over a public MQTT broker (`broker.hivemq.com`). If that broker is gone, the remote stops working but the artwork itself still runs.
-
-If Neocities disappears, copy those files into this folder and change the absolute URLs in `index.html` to relative ones (for example `src="p5.min.js"`).
-
-## Notes
+The phone remote talks over a public MQTT broker (`broker.hivemq.com`). If that broker is gone, the remote stops working but the artwork itself still runs. The tab icon `/gumamela.gif` is read from the root of the site; without it the page only loses its icon.
 
 Contains flashing and rapidly changing imagery.
